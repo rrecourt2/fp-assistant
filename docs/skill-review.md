@@ -18,8 +18,8 @@ They are selected when needed. There is no requirement to launch seven agents, o
 | [Annual Report Review](../skills/annual-report-review/SKILL.md) | Complete scoped reading, located disclosures and honest coverage gaps | 586 |
 | [Financial Performance Analysis](../skills/financial-performance-analysis/SKILL.md) | Comparable movements, supported drivers, earnings quality and cash conversion | 584 |
 | [Repayment and Structure](../skills/repayment-and-structure/SKILL.md) | Borrower liquidity/debt service, covenant analysis, protections and conditions | 577 |
-| [FP Lead](../skills/fp-lead/SKILL.md) | Concise approval case, controlled revisions, Credit replies and scoped readiness | 663 |
-| [Investment Grill](../skills/investment-grill/SKILL.md) | Original-evidence challenge and focused recheck findings | 557 |
+| [FP Lead](../skills/fp-lead/SKILL.md) | Concise approval case, controlled revisions, Credit replies and scoped readiness | 684 |
+| [Investment Grill](../skills/investment-grill/SKILL.md) | Original-evidence challenge and focused recheck findings | 603 |
 | [Template and Style Reviewer](../skills/fp-template-style-reviewer/SKILL.md) | Binding template rules, clear prose, preserved meaning and actual layout status | 532 |
 
 Each skill links its local copies of the shared rules and [workflow contract](../shared/workflow-contract.md). Performance and repayment skills additionally have targeted method references, loaded only for the relevant work. Shared references are maintained once in `shared/` and copied identically into each skill to satisfy Microsoft's self-contained companion-path requirements.
@@ -75,3 +75,7 @@ Keep changes driven by a real recurring task or an observed evaluation failure. 
 An independent review found only three small instruction changes necessary: organise each section around its subject with sufficient descriptive context; let financial reasoning develop across the section; and judge overall flow against approved examples rather than enforce a repeated paragraph sequence. These changes are incorporated in the shared rules, FP Lead, Template and Style Reviewer, and combined handover pack. No additional writing skill, mandatory review round or topic-specific writing recipe was added.
 
 This is a design judgment, not a demonstrated house-style match. No actual approved institutional FP examples were supplied for this check. The existing historical-replay and officer review should assess a representative drafted section for evidence, content selection, topic order, tone and readability together. The transcript fixture tested meeting intake, not final FP writing quality.
+
+## 2 October packaging and review refinement
+
+FP Lead and Investment Grill now include the [material-checkpoint review protocol](../shared/review-protocol.md), including a fresh arbiter mode for consequential disputes. This amendment has been structurally checked but not behaviorally evaluated in the work tenant. The updated sources are bundled in a compatible-plugin preview; see [installation limits](../INSTALL.md). Earlier behavioral results apply only to the recorded cases and versions.

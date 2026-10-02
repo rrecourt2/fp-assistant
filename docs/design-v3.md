@@ -6,6 +6,8 @@ This version incorporates the independent assessment, the officer's original 25 
 
 **Proposed extension:** [Meeting Evidence Review and a living Deal Strategy](transcripts-and-strategy.md) address subsequent feedback about client, internal and legal transcripts. The extension includes a draft eighth skill; the seven-skill baseline below remains identifiable.
 
+**Review refinement:** [material-checkpoint review and arbitration](adversarial-review.md) clarify that substantive challenge covers the case plan, important sections, the whole draft and consequential revisions. The default round plus recheck applies per checkpoint; a fresh third arbiter handles unresolved material disagreement or requested high-impact adjudication.
+
 ## Part A — For the investment officer
 
 ### A1. What FP Assistant does

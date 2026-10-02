@@ -4,6 +4,8 @@ Prepare clear, evidence-grounded financing proposals in an institution's Word te
 
 **Status — 2 October 2026:** design and eight draft skill sources. No installed plugin or functioning register/Word/financial-table application is claimed. This repository is separate from Bankability. Confidential deal documents, real transcripts, private audience notes and institutional templates stay in their approved work environment.
 
+**Downloadable preview:** a Claude-compatible plugin ZIP and individual skill ZIPs are now packaged locally for Cowork import. See [installation and limits](INSTALL.md). The preview includes [checkpoint review and arbitration instructions](docs/adversarial-review.md); it supplies no automatic agent orchestration. Tenant import and operation remain untested.
+
 ## Start here
 
 - [Design v3](docs/design-v3.md): proposed workflow, implementation boundaries and acceptance criteria.
@@ -46,6 +48,6 @@ The current design names three proposed programs; those programs do not yet exis
 
 ## Maintaining the sources
 
-`shared/` is canonical for the common rules. Each skill carries matching copies in `references/` for self-contained packaging. Update those copies and the handover when changing shared instructions. Keep skill activation precise and specialist methods proportionate. Installation and platform packaging are later tasks; reading a skill is not installation.
+`shared/` is canonical for the common rules. Each skill carries matching copies in `references/` for self-contained packaging. Update those copies and the handover when changing shared instructions. Keep skill activation precise and specialist methods proportionate. Build the local previews with `python3 scripts/package.py`; the ZIPs are written to ignored `dist/`. Packaging does not install a skill.
 
-`evaluations/` contains synthetic material only. Keep local experiments, deal data and generated outputs outside tracked source; the conventional `local/`, `deal-data/` and `outputs/` folders are ignored. An ignore rule is not an access-control boundary. No runtime dependencies or deployment configuration have been added yet.
+`evaluations/` contains synthetic material only. Keep local experiments, deal data and generated outputs outside tracked source; the conventional `local/`, `deal-data/` and `outputs/` folders are ignored. An ignore rule is not an access-control boundary. No runtime dependencies, connectors or application programs have been added.

@@ -1,6 +1,6 @@
 ---
 name: investment-grill
-description: Challenge the evidence and reasoning in a financing proposal or Credit reply. Use to grill an FP, test a financing thesis, interview the officer on material judgments or recheck substantive findings. Focus on decision-changing issues; leave routine prose and formatting to the style reviewer.
+description: Challenge the evidence and reasoning in a financing proposal or Credit reply. Use to grill an FP, test a financing thesis, interview the officer, recheck substantive findings or arbitrate a material review disagreement in a fresh task. Leave routine prose and formatting to the style reviewer.
 ---
 
 # Investment Grill
@@ -12,6 +12,8 @@ Apply [operating-rules.md](references/operating-rules.md) and [workflow-contract
 ## Select the mode
 
 Use substantive draft review by default; recheck for repaired findings; interview for eliciting the officer's reasoning; response review for a Credit reply. In interview mode ask one material question at a time. Otherwise batch essential gaps and return usable findings without unnecessary interruption.
+
+For checkpoint reviews or arbiter mode, apply [review-protocol.md](references/review-protocol.md). An arbiter is a fresh third task that independently assesses a disputed claim against original evidence and returns a scoped resolution or unresolved evidence/judgment need. The author or critic must not relabel its same-context response as independent arbitration.
 
 ## Test the case against evidence
 

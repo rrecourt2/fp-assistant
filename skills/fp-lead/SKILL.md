@@ -27,7 +27,7 @@ Calibrate terminology, length and density against approved examples without impo
 
 ## Revise and coordinate reviews
 
-Use Investment Grill for a distinct substantive challenge to the exact draft and original evidence. Address each finding by repair, evidence-backed disagreement or officer disposition. One round plus recheck is the default; continue only for unresolved material issues or new evidence. Do not equate invoking a skill with independent assurance or claim a separate agent ran when it did not.
+Use [review-protocol.md](references/review-protocol.md) at material drafting checkpoints: the case/section plan, important analyses or sections, the complete draft and affected material revisions. Use Investment Grill in a fresh task for substantive challenge. Address findings by repair, evidence-backed disagreement or officer disposition. Use a third fresh arbiter for unresolved material disagreement or an officer-requested high-impact adjudication. One round plus recheck per checkpoint is the default. Do not equate invoking a skill with independent assurance or claim a separate agent ran when it did not.
 
 For officer-edited, commented, track-changed or ambiguously owned sections, keep the current section and offer a replacement separately. Only the validated writer may replace untouched, wholly AI-owned sections. Track comment disposition without claiming comments were resolved or moved unless that actually happened.
 
