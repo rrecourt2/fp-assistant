@@ -28,6 +28,10 @@ Two targeted agents reviewed the Word amendments and financial/package integrati
 
 Known local limits: predefined financial tables are preserved rather than filled; wholly missing headings cannot be inserted; some Word-rewritten layout properties are deliberately ignored for edit detection. Use explicit section protection for deliberate changes only to those properties, as described in the [design](../docs/design.md). The entire FP still needs factual, substantive, style and visual review.
 
+### ASD-STE100 writing adaptation — 2 October 2026
+
+Case 9 was run with two fresh Codex actors: one using the pre-change writing instructions, one after the explicit ASD-STE100 adaptation. The author reviewed their actual outputs; there was no separate blind grader, and exact model settings were not captured. Both returned connected institutional prose and a factual business description, preserved conditional refinancing and management attribution, and separately flagged unsupported market strength, mitigant adequacy and risk acceptance. Neither invented a covenant, statistic or completed Word operation. They retained the draft's disputed judgments in proposed wording with a substantive-review note, so these outputs are not submission-ready paragraphs. The baseline already identified the evidence issues; this small check establishes no measured improvement in style or real institutional fit. Raw runs are retained locally. Repeat the case on the intended Cowork model and judge the whole FP against actual approved examples.
+
 ## Outstanding acceptance
 
 | Check | Status |

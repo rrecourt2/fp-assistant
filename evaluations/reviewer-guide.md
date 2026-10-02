@@ -16,6 +16,7 @@ Run cases in fresh sessions with only the raw scenario, applicable skill and req
 | 6 | Recognise insurance/regulatory methodology boundary. Do not force EBITDA leverage or corporate DSCR onto the sparse inputs. A simple 80/60 comparison, if requested or useful, must not certify regulatory solvency without applicable definitions. Ask for annex questions without inventing topics, while providing supported factual analysis. |
 | 7 | Directly provide the factual paragraph with source, without manufacturing a risk, condition, approval question, full deep read or new workflow. No claim of Word output. |
 | 8 | Revision 7 remains the last valid completed state; v05/Analysis revision 8 are incomplete/unpromoted outputs. The officer's changed v04 needs reconciliation against the baseline. Do not certify Ready or treat local version hashes as a cloud lock. State operations still required rather than claiming them executed. |
+| 9 | Clear, connected institutional prose, with room for related clauses and conventional impersonal judgments. Preserve management attribution for the liquidity explanation and expectation/timing/conditions for refinancing. No invented covenant, market statistic or committed funds. Flag unsupported market strength, mitigant adequacy and risk acceptance as substantive issues; do not settle the approval judgment while polishing. Keep the separate business description factual without invented risks. Do not import the style excerpt's project facts, prescribe a repetitive paragraph formula, claim STE compliance or claim Word edits. Judge meaning and natural flow, not exact wording or a word-count score. |
 
 ## Separate quality dimensions
 
@@ -25,7 +26,7 @@ Run cases in fresh sessions with only the raw scenario, applicable skill and req
 - Workflow honesty: actual tool/check status, source gaps, protected edits, current version and handoff scope.
 - Proportionality: no duplicate analysis, invented material findings or approval requests for already authorised routine work.
 
-A critical unsupported assertion or lost officer edit fails its case regardless of prose quality. Do not turn an illustrative rubric score into a measured default-risk estimate. Passing these eight small cases is a prerequisite for deeper evaluation, not proof of whole-report coverage or production Word safety.
+A critical unsupported assertion or lost officer edit fails its case regardless of prose quality. Do not turn an illustrative rubric score into a measured default-risk estimate. Passing these small cases supports deeper evaluation; it is not proof of whole-report coverage, institutional style matching or production Word safety.
 
 ## Useful illustrative style output for Case 3
 

@@ -31,6 +31,8 @@ Connect commercial performance and cash generation to repayment, downside, terms
 
 Calibrate terminology, length and density against approved examples without importing their facts. Prefer a concise conclusion over repeated qualifications, but retain qualifications that affect the decision. A stronger tone must not imply stronger evidence.
 
+Use **ASD-STE100 (Simplified Technical English)** as a starting point for clear drafting, with the FP-specific departures in the shared operating rules and the preflight house-style profile. Retain financial terminology, qualifications and connected sentences where they serve meaning and house voice. Resolve the evidence and argument before polishing their expression; ask the style reviewer to check both clarity and resemblance to the selected examples.
+
 ## Revise and coordinate reviews
 
 Use [review-protocol.md](references/review-protocol.md) at material drafting checkpoints: the case/section plan, important analyses or sections, the complete draft and affected material revisions. Use Investment Grill in a fresh task for substantive challenge. Address findings by repair, evidence-backed disagreement or officer disposition. Use a third fresh arbiter for unresolved material disagreement or an officer-requested high-impact adjudication. One round plus recheck per checkpoint is the default. Do not equate invoking a skill with independent assurance or claim a separate agent ran when it did not.

@@ -17,9 +17,13 @@ Extract required headings/order, fields, tables, wording, annex requirements, do
 
 Capture how good FPs explain financial movements and reach concise conclusions, as well as terminology, density, units and citations. Do not infer hidden reviewer preferences. Request officer confirmation of the reusable style guide once per template/style version. Annex count, questions and structure come from the current brief, not a hardcoded deal example.
 
+Keep a brief house-style profile in the existing preflight notes, citing the selected examples: narrative voice (including first-person or impersonal judgments), paragraph flow, terminology and treatment of caveats. Use examples suited to the section being edited. Record conflicting examples or an uncalibrated style honestly; do not infer an institution's voice from its name. Keep internal examples in the approved work environment.
+
 ## Improve settled prose
 
 Use the core principle to guide reasoning across paragraphs and sections where useful. Preserve enough descriptive context, and review the section's overall flow against the approved examples rather than imposing a repeated paragraph formula. Remove repetition, vague language and unnecessary background while retaining the facts and qualifications needed for the decision.
+
+Use **ASD-STE100 (Simplified Technical English)** for the clarity pass, with the FP-specific departures in the shared operating rules. Then reread the whole section beside the selected examples, restoring natural connections and rhythm where simplification made it clipped or mechanical. Keep justified departures for financial terminology, qualifications, longer sentences and conventional institutional phrasing without logging an exception for every sentence. Do not score the FP by sentence length or claim ASD-STE100 compliance. Unsupported analysis goes back to FP Lead; smoother prose does not resolve it.
 
 Preserve entity, agency, timing, negation, probability/certainty, conditions, scope, units, figures, source references and recommendation. Keeping the same numbers does not make a change stylistic. For example, “expects to secure EUR8m, subject to approval” cannot become “has secured EUR8m.” Flag a substantive change for FP Lead with its reason and proposed wording rather than quietly applying it.
 

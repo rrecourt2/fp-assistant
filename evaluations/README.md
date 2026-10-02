@@ -15,7 +15,7 @@ Use [scenarios.md](scenarios.md), [transcript-case.md](transcript-case.md) and [
 3. Have a fresh reviewer assess the output against the hidden criteria. Preserve raw actor output and verdicts in the authorised local evaluation folder; one-off run transcripts are not tracked in the public repository. Record critical failures even when the prose is good.
 4. Add a result to results.md. Fix observed failures and rerun the affected case, retaining earlier failed evidence.
 
-Qualify the intended Cowork model on scenarios 1, 2, 3 and 5 plus the deal-updates case. Test another model before switching to it. Rerun affected scenarios after local changes; there is no blanket two-model/all-cases requirement for every edit.
+Qualify the intended Cowork model on scenarios 1, 2, 3, 5 and 9 plus the deal-updates case. Case 9 checks flexible clarity without loss of house voice or evidence meaning. Test another model before switching to it. Rerun affected scenarios after local changes; there is no blanket two-model/all-cases requirement for every edit.
 
 ## Main acceptance test
 
