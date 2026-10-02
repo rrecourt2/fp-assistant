@@ -1,6 +1,6 @@
 ---
 name: investment-grill
-description: Challenge the evidence and reasoning in a financing proposal or Credit reply. Use to grill an FP, test a financing thesis, interview the officer, recheck substantive findings or arbitrate a material review disagreement in a fresh task. Leave routine prose and formatting to the style reviewer.
+description: Challenge the evidence and reasoning in a financing proposal or Credit reply. Use to grill an FP, test the financing thesis, interview the officer about the case, recheck findings or arbitrate a disputed finding in a fresh task. For wording and layout use fp-template-style-reviewer.
 ---
 
 # Investment Grill
@@ -8,6 +8,8 @@ description: Challenge the evidence and reasoning in a financing proposal or Cre
 Test whether the presented financing case is defensible. The officer's intended recommendation is a hypothesis to examine, not a conclusion to validate. Challenge reasoning without taking over authorship or manufacturing weaknesses.
 
 Apply [operating-rules.md](references/operating-rules.md) and [workflow-contract.md](references/workflow-contract.md). Identify the exact draft/reply, review scope, annexes, brief, previous findings and accessible original evidence. Scope the review honestly when evidence is unavailable.
+
+Tools: [register.py](scripts/register.py), [fp_docx.py](scripts/fp_docx.py). Use the workflow contract for invocation and record updates.
 
 ## Select the mode
 

@@ -1,3 +1,5 @@
+> Archived design/review for version 0.2.0. See [the current design](../design.md). Historical validation claims apply only to their named versions.
+
 # FP Assistant — deal updates, guidance and Deal Strategy
 
 **Updated:** 2 October 2026. **Status:** eighth skill expanded from meeting evidence to recent emails, meeting material and informal guidance. It retains the identifier `meeting-evidence-review` and is included in preview 0.2.0. No live mailbox, Teams or register integration has been tested here.
@@ -75,7 +77,7 @@ Suggestions can remain proposed, be adopted, be deferred with a reason, or be de
 
 ## Draft skill and integration
 
-The [Deal Updates and Guidance skill](../skills/meeting-evidence-review/SKILL.md) includes locally packaged shared rules. It is a draft extension, not installed and not yet merged into the combined seven-skill pack.
+The [Deal Updates and Guidance skill](../../skills/deal-updates/SKILL.md) includes locally packaged shared rules. It is a draft extension, not installed and not yet merged into the combined seven-skill pack.
 
 Proposed changes to existing skills are small:
 
@@ -90,7 +92,7 @@ The existing programs need fields/locators and routing for this source type, not
 
 Evaluate a mixed client/internal/legal transcript, an uncertain speaker/number, a corrected transcript, an unchanged repeat meeting, conflicting sources, promised-but-missing evidence and an unexpected adverse fact. Include genuinely useful positive business context. Check what is saved and where, not only the quality of the summary. No fabricated timestamps, decisions, commitments, corroboration or successful writes.
 
-The [evaluation fixture](../evaluations/transcript-case.md) is synthetic. The [review record](../evaluations/transcript-review.md) distinguishes structural checks, actual behavioral output and tenant tests still needed. The transcript result predates the email expansion. The [email/update test](../evaluations/deal-updates-review.md) records the new validation separately; no real mailbox was read.
+The [evaluation fixture](../../evaluations/transcript-case.md) is synthetic. The [review record](../../evaluations/transcript-review.md) distinguishes structural checks, actual behavioral output and tenant tests still needed. The transcript result predates the email expansion. The [email/update test](../../evaluations/deal-updates-review.md) records the new validation separately; no real mailbox was read.
 
 ## Current precedents informing the design
 

@@ -1,3 +1,5 @@
+> Archived design/review for version 0.2.0. See [the current design](../design.md). Historical validation claims apply only to their named versions.
+
 **FP Assistant v2 — assessment, 1 October 2026**
 
 **Recommendation: proceed with a narrower pilot after revising the evidence, state and Word-update design.** The four roles, complete reading of key documents, early officer feedback, separate challenge pass and use of approved FP examples are a good foundation. The present specification is more convincing about organising the work than about proving that its explanations and investment judgments are sound. It also promises a broader Word reconciliation and cloud persistence system than “three small programs” suggests.

@@ -1,6 +1,6 @@
 ---
 name: financial-performance-analysis
-description: Explain financial movements, earnings quality and cash conversion for a financing proposal. Use when analysing revenue or margin changes, profit versus cash, working capital, adjustments or financial trends across periods. Use annual-report-review for complete report coverage and repayment-and-structure for debt-service and financing terms.
+description: Explain financial movements, earnings quality and cash conversion for a financing proposal. Use for revenue or margin changes, profit versus cash, working capital, adjustments, financial trends and the FP's financial table. For complete report reading use annual-report-review; for debt service and financing terms use repayment-and-structure.
 ---
 
 # Financial Performance Analysis
@@ -8,6 +8,8 @@ description: Explain financial movements, earnings quality and cash conversion f
 Explain what changed, which drivers are supported, what remains unexplained and why it matters to financing. Produce reasoning the FP writer can use; do not merely restate the financial table.
 
 Apply [operating-rules.md](references/operating-rules.md) and [workflow-contract.md](references/workflow-contract.md). Use the approved spread, relevant original statements/notes, interim accounts, management explanations and available prior analyses. State the period and perimeter of each comparison. The initial pilot concerns corporate borrowers; sector-specific accounting or regulated-capital cases require suitable institutional methodology, not forced industrial-company ratios.
+
+Tools: [register.py](scripts/register.py), [fin_table.py](scripts/fin_table.py). Use the workflow contract for invocation and record updates.
 
 ## Establish comparable inputs
 

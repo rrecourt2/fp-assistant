@@ -1,6 +1,6 @@
 # Synthetic transcript evaluation
 
-Use only this fixture and the applicable meeting-evidence-review skill and its referenced rules. No live files, remote records or contacts are represented. You may create the specifically requested local test output. The FP runtime tools are unavailable.
+Use only this fixture and the applicable deal-updates skill and its referenced rules. No live files, remote records or contacts are represented. You may create the specifically requested local test output. The FP runtime tools are unavailable.
 
 ## User request
 

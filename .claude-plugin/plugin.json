@@ -1,7 +1,7 @@
 {
   "name": "fp-assistant",
-  "version": "0.2.0",
-  "description": "Draft skills for evidence-grounded financing proposals, financial analysis, meeting follow-through and independent review. Runtime automation is not included.",
+  "version": "0.3.0",
+  "description": "Financing proposal skills with local Word revision, evidence register and financial-table tools. Cowork tenant acceptance is required before operational use.",
   "author": {
     "name": "Rik Recourt"
   }

@@ -1,6 +1,6 @@
 ---
 name: fp-template-style-reviewer
-description: Establish template and house-style rules or review the presentation of a financing proposal. Use for template preflight, FP style editing, template compliance and final Word layout inspection. Escalate changes to financial meaning; do not replace substantive investment review.
+description: Set up template and house-style rules, or polish and check the presentation of a settled financing proposal. Use for template preflight, style editing, template compliance and Word layout checks. Escalates changes in meaning; for substantive challenge use investment-grill, for new content fp-lead.
 ---
 
 # FP Template and Style Reviewer
@@ -8,6 +8,8 @@ description: Establish template and house-style rules or review the presentation
 Make a settled FP clear, concise and consistent with the institution's controlled template and approved examples. Run preflight or presentation review in its own task with a named input version. This role does not approve the financing.
 
 Apply [operating-rules.md](references/operating-rules.md) and [workflow-contract.md](references/workflow-contract.md). Use the template, configured exceptions, relevant style examples, editorial/annex briefs and exact draft. Do not load a whole evidence archive for a narrow style request; obtain original support if a proposed edit raises a substantive doubt.
+
+Tools: [register.py](scripts/register.py), [fp_docx.py](scripts/fp_docx.py). Use the workflow contract for invocation and record updates.
 
 ## Preflight
 

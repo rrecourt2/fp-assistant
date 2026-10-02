@@ -1,6 +1,6 @@
 ---
 name: annual-report-review
-description: Review annual accounts and their notes completely for a financing proposal, retaining source-grounded findings and reading coverage. Use for a full annual-report or audited-accounts review, note disclosures, reporting-scope checks and resolving unreadable financial pages. Use financial-performance-analysis for cross-period explanations and repayment-and-structure for the financing conclusion.
+description: Read annual accounts and all their notes completely for a financing proposal, keeping page-referenced findings and a record of what was read. Use for a full annual-report or audited-accounts review, note disclosures, reporting-scope checks and unreadable pages. For explaining movements across periods use financial-performance-analysis; for the repayment conclusion use repayment-and-structure.
 ---
 
 # Annual Report Review
@@ -8,6 +8,8 @@ description: Review annual accounts and their notes completely for a financing p
 Establish what the report actually discloses, what has been read and what remains uncertain. Give subsequent analysts reliable evidence and useful findings, not a compressed substitute for the original report.
 
 Apply [operating-rules.md](references/operating-rules.md) and [workflow-contract.md](references/workflow-contract.md). Use the actual report/version, approved reading scope, relevant spread and prior report where needed for comparison. Retain PDF page numbers and printed page labels when different.
+
+Tools: [register.py](scripts/register.py). Use the workflow contract for invocation and record updates.
 
 ## Establish scope and coverage
 

@@ -1,3 +1,5 @@
+> Archived design/review for version 0.2.0. See [the current design](../design.md). Historical validation claims apply only to their named versions.
+
 # FP Assistant v3 — reusable skill handover pack
 
 **Date:** 1 October 2026. **Status:** reviewed draft instructions. These skills have not been installed or tested in the work tenant. The proposed register, Word and financial-table programs have not been implemented by this pack.

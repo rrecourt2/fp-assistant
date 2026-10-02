@@ -1,6 +1,16 @@
 # FP Assistant: working tools and cleanup — implementation plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Implementation status, 2 October 2026:** Tasks 1–6 are implemented locally, including the reviewed Task 2a–2c amendments. Tasks 7–9 remain work-environment acceptance. See [current design](../../design.md) and [actual verification results](../../../evaluations/results.md). The code blocks and unchecked substeps below preserve the original implementation recipe; they are not the current source or an outstanding-work list. Do not reinstall these earlier code blocks over the maintained tools.
+
+| Task | Current status |
+|---|---|
+| 1. Setup and packaging | Implemented; reproducible builds and package validation |
+| 2. Word tool | Implemented; existing-draft mode, preservation safeguards, ambiguous record recovery and both real Word-save regressions |
+| 3. Register | Implemented; persistent unresolved items, explicit officer readiness, safe view retries and linked analysis |
+| 4. Financial table | Implemented; input identity, ambiguity checks and calculation/cell provenance |
+| 5. Skills and runtime links | Implemented; eight skills, `deal-updates` rename and packaged scripts |
+| 6. Documentation | Implemented; current design, installation/pilot instructions and archived earlier designs |
+| 7–9. Tenant, full FP, model | Not run; follow the updated acceptance steps below |
 
 **Goal:** Make FP Assistant prove useful on a real FP in Microsoft Copilot Cowork on the work laptop. Three things must hold:
 - your writing is protected;
@@ -20,12 +30,12 @@ Then show it working end to end on one historical deal.
 - Runtime: Python 3.9+ standard library only.
 - Development: `uv`, `pytest`, and `python-docx` and `openpyxl` as independent readers in tests only.
 
-**Status of this plan's code:** written and verified on 2 October 2026 in a scratch copy of the repository at commit `ba62f3b`, after review feedback from Astra:
+**Historical verification of this plan's original code:** written and verified on 2 October 2026 in a scratch copy of the repository at commit `ba62f3b`, after review feedback from Astra:
 - 55 tests pass;
 - `package.py` builds the zips;
 - the three self-tests pass on Python 3.9.6 with no third-party libraries, including from inside the unzipped plugin.
 
-The code blocks are those exact files.
+The code blocks are those earlier files. The maintained implementation also includes subsequent review fixes and the officer's authorised existing-draft and Word-save requirements.
 
 ## Problems this plan fixes
 
@@ -2943,15 +2953,15 @@ Run this as soon as Tasks 5 and 6 are done (both are local). It answers the open
 
 - [ ] **Step 1:** Copy `dist/fp-assistant-0.3.0.zip` to the work laptop. Upload it in Cowork (Customize → Plugins → Upload plugin, **Only you**) and confirm the eight skills appear.
 - [ ] **Step 2:** In a new task, ask fp-lead to run the three self-tests. Expected: three `PASS` lines. If Python is unavailable, record that and stop; the skills still work in proposal mode while a decision is made.
-- [ ] **Step 3:** Run "Acceptance with a test folder" in `INSTALL.md` (written in Task 6, Step 5), steps 1–6, with the **real FP template** in a OneDrive folder and no deal data. Record pass or fail for each:
+- [ ] **Step 3:** Verify local execution, OneDrive save, independent readback and fresh-task recovery as described in `INSTALL.md`, using synthetic content and the **real FP template** kept inside the work environment. Record pass or fail for each:
   - the register files appear and the Excel file opens;
   - v01 opens in Word without repair;
   - your edit, comment, tracked change and bold text all survive two later rounds;
   - the proposals files hold the refused text;
   - the grill can read the kept tables;
   - cover fields are filled and protected cover cells are untouched.
-- [ ] **Step 4:** Repeat on a SharePoint folder.
-- [ ] **Step 5:** Add the rows `cowork-check-onedrive` and `cowork-check-sharepoint` to `evaluations/results.md`, including the exact Cowork message for any failure. Commit:
+- [ ] **Step 4:** Repeat on SharePoint only if it is an intended storage location; otherwise record it as deferred.
+- [ ] **Step 5:** Add the actual OneDrive result and SharePoint result or deferral to `evaluations/results.md`, including a redacted exact error for any failure. Commit:
 
 ```bash
 git add evaluations/results.md
@@ -2974,7 +2984,7 @@ This is the main quality test: does the assistant produce a useful full FP, and 
 - Copy its evidence as it stood before that FP into a OneDrive test folder.
 - Add the template, approved style examples (not the target FP itself), the spreading export and its mapping. Add `expect` cells for entity, unit and period headers.
 
-- [ ] **Step 1: Draft the complete FP.** In a new task: "Start an FP for <deal>; the folder is <link>." Confirm the brief, let the analyst read Tier A in full, then ask for the complete FP. A representative section first is optional, for troubleshooting only.
+- [ ] **Step 1: Improve a partially completed FP as a whole.** Use the existing draft as the base, with a separate blank template for requirements. Use explicit existing-draft starting mode for authorised revisions in a new copy; preserve protected content and establish normal edit protection for later rounds. Review and improve existing prose, fill supported gaps, and identify missing sections the writer cannot insert. Do not use blank-template first-build mode for this test. Supply the original evidence and approved style examples; keep the eventual approved FP as the officer's comparator. Read Tier A in full. A representative section is optional troubleshooting, not a prerequisite.
 - [ ] **Step 2: Judge the draft.** Does it explain the business and the numbers logically (drivers, cash, repayment)? Does it include the relevant detail, and does it read naturally in house style? Note the material errors and omissions, and how long your corrections take.
 - [ ] **Step 3: Edit and add news.**
   - Make your usual edits in Word: wording, a comment, a tracked change.

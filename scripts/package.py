@@ -15,7 +15,7 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 STAMP = (2026, 1, 1, 0, 0, 0)  # fixed timestamps: the same sources always give the same ZIP bytes
-LINK = re.compile(r"\]\(((?:references|scripts)/[^)#\s]+)\)")
+LINK = re.compile(r"\]\((?:\./)?((?:references|scripts)/[^)#\s]+)(?:#[^)\s]+)?\)")
 
 
 class PackageError(Exception):
@@ -28,8 +28,24 @@ def frontmatter(text):
         raise PackageError("SKILL.md must start with --- frontmatter ---")
     fields = {}
     for line in m.group(1).splitlines():
-        key, _, value = line.partition(":")
-        fields[key.strip()] = value.strip()
+        key, sep, value = line.partition(":")
+        value = value.strip()
+        if not sep or line != line.lstrip() or value.startswith(("|", ">")):
+            raise PackageError("use single-line frontmatter fields in this package")
+        if key in fields:
+            raise PackageError(f"duplicate frontmatter field {key}")
+        if value.startswith('"'):
+            try:
+                value = json.loads(value)
+            except ValueError as exc:
+                raise PackageError("use a valid single-line quoted field") from exc
+        elif value.startswith("'"):
+            if not value.endswith("'") or len(value) < 2:
+                raise PackageError("unterminated quoted frontmatter field")
+            value = value[1:-1].replace("''", "'")
+        if not isinstance(value, str) or "\n" in value or "\r" in value:
+            raise PackageError("frontmatter values must be single-line strings")
+        fields[key.strip()] = value
     return fields
 
 
@@ -128,9 +144,12 @@ def build(root=ROOT, dest=None, check_only=False):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
+    if argv not in ([], ["--check"]):
+        print("usage: package.py [--check]", file=sys.stderr)
+        return 1
     try:
         result = build(check_only="--check" in argv)
-    except PackageError as e:
+    except (PackageError, OSError, ValueError) as e:
         print(f"FAILED: {e}", file=sys.stderr)
         return 1
     for name, count in result.items():

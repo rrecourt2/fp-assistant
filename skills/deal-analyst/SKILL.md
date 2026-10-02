@@ -1,6 +1,6 @@
 ---
 name: deal-analyst
-description: Build the company, transaction and due-diligence analysis behind a financing proposal. Use for analysing a deal, integrating specialist input, assessing new evidence, listing open diligence items, preparing a specified annex or finding support for Credit questions. Use the finance specialist skills for detailed accounts, performance or repayment analysis.
+description: Build the company, transaction and due-diligence analysis behind a financing proposal (FP). Use to analyse a deal, assess what a new document means for the case, answer "what's open?", integrate specialist views, prepare a specified annex or find support for a Credit question. For emails, meeting transcripts or call notes use deal-updates; for reading a full annual report use annual-report-review; for explaining margins or cash use financial-performance-analysis; for repayment and covenants use repayment-and-structure.
 ---
 
 # Deal Analyst
@@ -8,6 +8,8 @@ description: Build the company, transaction and due-diligence analysis behind a 
 Develop the substantive case from which FP Lead can write a concise proposal. Own the company and transaction account, cross-topic synthesis, specialist views, risks, open items and specified annex analyses. An FP is a financing proposal in this workflow, not an FP&A budget.
 
 Apply [operating-rules.md](references/operating-rules.md) and [workflow-contract.md](references/workflow-contract.md). Obtain the relevant brief, source folder, latest analysis, prior decision and requested output. Continue supported work when an input is missing. Do not reload unrelated records for a narrow question.
+
+Tools: [register.py](scripts/register.py). Use the workflow contract for invocation and record updates.
 
 ## Analyse the deal
 
@@ -20,7 +22,7 @@ Use specialist methods where needed:
 - **annual-report-review** for complete accounts/notes coverage and reliable disclosed evidence;
 - **financial-performance-analysis** for earnings drivers, cash conversion and financial movements;
 - **repayment-and-structure** for debt service, liquidity, covenants and financing protections.
-- **meeting-evidence-review** (Deal Updates and Guidance) for recent email/meeting evidence, uncertain guidance and changes to priorities.
+- **deal-updates** (Deal Updates and Guidance) for recent email/meeting evidence, uncertain guidance and changes to priorities.
 
 Reuse their located evidence and completed work. Request a bounded missing analysis, not a duplicate full review. If the skill is unavailable, do supported work within your competence and identify the missing specialist check; do not claim it ran.
 

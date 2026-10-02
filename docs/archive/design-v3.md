@@ -1,3 +1,5 @@
+> Archived design/review for version 0.2.0. See [the current design](../design.md). Historical validation claims apply only to their named versions.
+
 # FP Assistant — Design Spec v3
 
 **Date:** 1 October 2026. **Status:** revised design and draft skill sources; not installed, implemented or verified in the work tenant. Supersedes v2 for the proposed pilot; v2 is retained unchanged.
@@ -134,7 +136,7 @@ Unproved: script access to current remote file bytes, exact output-byte publicat
 
 ### B2. Deliverables and scope
 
-The seven draft sources and their review are in [fp-assistant-v3](skill-review.md). Each skill has precise activation conditions, analytical decisions, expected output and honest completion limits. Shared [operating rules](../shared/operating-rules.md) preserve the original principles; the [workflow contract](../shared/workflow-contract.md) describes v3 state and capability boundaries.
+The seven draft sources and their review are in [fp-assistant-v3](skill-review.md). Each skill has precise activation conditions, analytical decisions, expected output and honest completion limits. Shared [operating rules](../../shared/operating-rules.md) preserve the original principles; the [workflow contract](../../shared/workflow-contract.md) describes v3 state and capability boundaries.
 
 These are reviewable skill instructions, not an installed plugin. The three programs below remain to be implemented. Skills can provide explicitly provisional analysis from accessible evidence before those programs exist; they must not invent successful operations or formal Ready status.
 
@@ -199,7 +201,7 @@ A program failure stops that mutation, preserves prior valid outputs and returns
 
 ### B8. Evaluation and acceptance
 
-Use the [synthetic skill scenarios](../evaluations/scenarios.md), then public-document tests, historical tenant replays and a supervised pilot. Fresh acting sessions receive the task and evidence, not the grader's expected answer. Test skill selection, direct completion, financial reasoning, false-positive challenge and honest capability boundaries. Run on the exact tenant model/effort before claiming operational skill quality.
+Use the [synthetic skill scenarios](../../evaluations/scenarios.md), then public-document tests, historical tenant replays and a supervised pilot. Fresh acting sessions receive the task and evidence, not the grader's expected answer. Test skill selection, direct completion, financial reasoning, false-positive challenge and honest capability boundaries. Run on the exact tenant model/effort before claiming operational skill quality.
 
 Script tests should target meaningful failure modes: wrong entity/period/unit, restated comparatives, unreadable notes, unsupported adjustments, restricted cash, proposed-but-uncommitted funding, late adverse evidence, officer deletion/formatting/track changes, duplicate retry and partial publication. No confidential corpus enters the generic repository.
 

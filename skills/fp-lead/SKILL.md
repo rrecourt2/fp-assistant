@@ -1,6 +1,6 @@
 ---
 name: fp-lead
-description: Draft and revise financing proposals and Credit replies from an evidence base. Use to start or continue an FP, select its approval case, integrate reviews and officer edits, or assess readiness and record submission. Own editorial decisions and coordination; use specialist skills for detailed analysis.
+description: Draft and revise financing proposals (FPs) and Credit replies. Use to start or continue an FP, set the brief, choose the approval case, write or revise sections, build the Word version, integrate review findings and the officer's Word edits, assess readiness or record submission. For detailed analysis use deal-analyst and the finance skills; for challenge use investment-grill; for house style use fp-template-style-reviewer.
 ---
 
 # FP Lead
@@ -9,13 +9,17 @@ Write the strongest defensible case for the officer's provisional recommendation
 
 Apply [operating-rules.md](references/operating-rules.md) and [workflow-contract.md](references/workflow-contract.md). Use the task brief, current Word input, evidence record, template rules, approved style examples, configured annexes and review findings relevant to the request. Missing runtime tools permit a labelled draft, not invented persistence or Ready status.
 
+Tools: [register.py](scripts/register.py), [fp_docx.py](scripts/fp_docx.py), [fin_table.py](scripts/fin_table.py). Use the workflow contract for invocation and record updates.
+
 ## Establish the brief
 
 For a new FP, confirm decision sought, intended recommendation, financing scope, actual audience, annex questions, deadline and output location. Propose concise wording from supplied information; ask only for missing material input. Keep private audience sensitivities out of shared records. Obtain template preflight in a separate task; if unavailable, identify the handoff and continue supported analysis.
 
 For an existing FP, begin with its current version and officer changes. Do not restart completed work or require the officer to approve routine steps again. Use the valid completed register revision to identify the current handoff when operational tools exist.
 
-Before drafting, a material revision or a readiness decision, use `meeting-evidence-review` (Deal Updates and Guidance) to refresh relevant accessible emails and meeting material through an explicit cutoff. Integrate changes into the whole case, diligence priorities and section plan. If email access is unavailable or coverage incomplete, disclose that limit and continue supported drafting without claiming all recent information was checked. A representative section is optional style calibration after understanding the deal, not a prerequisite to drafting the full FP.
+For a genuine first-time, partially completed FP, use that draft as the base and the separate blank template to check structure and completeness. The request to improve it authorises revisions to its unprotected prose in a new copy; review the whole paper and evidence, retain useful work and fill supported gaps. Use the writer's existing-draft mode, preserving comments, tracked changes, fixed objects and expressly protected sections. Identify wholly missing sections the writer cannot insert. Establish the new output's record for later rounds. If a file may instead be a renamed assistant version, recover its original record before revising; missing metadata alone does not authorise resetting edit protection.
+
+Before drafting, a material revision or a readiness decision, use `deal-updates` (Deal Updates and Guidance) to refresh relevant accessible emails and meeting material through an explicit cutoff. Integrate changes into the whole case, diligence priorities and section plan. If email access is unavailable or coverage incomplete, disclose that limit and continue supported drafting without claiming all recent information was checked. A representative section is optional style calibration after understanding the deal, not a prerequisite to drafting the full FP.
 
 ## Shape and draft the case
 
@@ -31,13 +35,13 @@ Calibrate terminology, length and density against approved examples without impo
 
 Use [review-protocol.md](references/review-protocol.md) at material drafting checkpoints: the case/section plan, important analyses or sections, the complete draft and affected material revisions. Use Investment Grill in a fresh task for substantive challenge. Address findings by repair, evidence-backed disagreement or officer disposition. Use a third fresh arbiter for unresolved material disagreement or an officer-requested high-impact adjudication. One round plus recheck per checkpoint is the default. Do not equate invoking a skill with independent assurance or claim a separate agent ran when it did not.
 
-For officer-edited, commented, track-changed or ambiguously owned sections, keep the current section and offer a replacement separately. Only the validated writer may replace untouched, wholly AI-owned sections. Track comment disposition without claiming comments were resolved or moved unless that actually happened.
+After the initial authorised import, keep officer-edited, commented, track-changed or ambiguously owned sections and offer replacements separately. Only the validated writer may replace eligible untouched sections. Track comment disposition without claiming comments were resolved or moved unless that actually happened.
 
 After content settles, hand the named version to the separate Template and Style Reviewer task. Integrate against the matching base, then check the whole FP for consistent figures, scope, terms, qualifications, recommendation and annex conclusions. Send substantive changes back for affected analysis/recheck. Layout checks apply to the final changed Word version.
 
 ## Readiness and Credit
 
-Assess Ready against the exact current Word hash and evidence revision, required checks, open blockers, source-impact dispositions and rechecks. Any mismatch requires reconciliation. Record an officer's explicit submission with exceptions separately; never label it clean Ready. Preserve the submitted version.
+Assess readiness with the officer against the exact current Word hash and evidence revision, required checks, open blockers, source-impact dispositions and rechecks. The register reports mechanical checks; it does not certify the FP. Record readiness only after the necessary evidence, content, template and visual checks, naming the actual decision-maker. Any mismatch requires reconciliation. Record an officer's explicit submission with exceptions separately; never label it clean Ready. Preserve the submitted version.
 
 Log actual Credit questions verbatim with author/date and distinguish anticipated questions. Draft a direct answer with necessary evidence, identify resulting FP changes and seek substantive challenge where material. Communications remain drafts for the officer to send.
 

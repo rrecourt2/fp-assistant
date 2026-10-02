@@ -1,10 +1,12 @@
+> Archived design/review for version 0.2.0. See [the current design](../design.md). Historical validation claims apply only to their named versions.
+
 # FP Assistant v3 — skill review and source index
 
 **Date:** 1 October 2026. **Result:** seven reviewed draft skill sources, preserving the original editorial principles and separating three specialist financial methods. Structural validation passed. Independent behavioral testing and work-tenant validation remain outstanding; these files are not an installed or production-certified plugin.
 
-The officer supplied the original 25 September four-role execution pack in this conversation. Its core writing principle, approval-case guidance and five operating rules are retained in [the canonical shared reference](../shared/operating-rules.md). Deal name, financing amount, annex topics and private audience information are kept out of the reusable skills.
+The officer supplied the original 25 September four-role execution pack in this conversation. Its core writing principle, approval-case guidance and five operating rules are retained in [the canonical shared reference](../../shared/operating-rules.md). Deal name, financing amount, annex topics and private audience information are kept out of the reusable skills.
 
-Subsequent user feedback led to a separate [transcript and Deal Strategy extension](transcripts-and-strategy.md), including a draft eighth skill. Its [validation record](../evaluations/transcript-review.md) is separate from the seven-skill baseline results below; it is not yet included in the combined handover pack.
+Subsequent user feedback led to a separate [transcript and Deal Strategy extension](transcripts-and-strategy.md), including a draft eighth skill. Its [validation record](../../evaluations/transcript-review.md) is separate from the seven-skill baseline results below; it is not yet included in the combined handover pack.
 
 ## Why seven skills
 
@@ -14,15 +16,15 @@ They are selected when needed. There is no requirement to launch seven agents, o
 
 | Skill source | Main result | Body words at structural check |
 |---|---|---:|
-| [Deal Analyst](../skills/deal-analyst/SKILL.md) | Integrated company/DD analysis, specialist views, annex input and open items | 611 |
-| [Annual Report Review](../skills/annual-report-review/SKILL.md) | Complete scoped reading, located disclosures and honest coverage gaps | 586 |
-| [Financial Performance Analysis](../skills/financial-performance-analysis/SKILL.md) | Comparable movements, supported drivers, earnings quality and cash conversion | 584 |
-| [Repayment and Structure](../skills/repayment-and-structure/SKILL.md) | Borrower liquidity/debt service, covenant analysis, protections and conditions | 577 |
-| [FP Lead](../skills/fp-lead/SKILL.md) | Concise approval case, controlled revisions, Credit replies and scoped readiness | 763 |
-| [Investment Grill](../skills/investment-grill/SKILL.md) | Original-evidence challenge and focused recheck findings | 603 |
-| [Template and Style Reviewer](../skills/fp-template-style-reviewer/SKILL.md) | Binding template rules, clear prose, preserved meaning and actual layout status | 532 |
+| [Deal Analyst](../../skills/deal-analyst/SKILL.md) | Integrated company/DD analysis, specialist views, annex input and open items | 611 |
+| [Annual Report Review](../../skills/annual-report-review/SKILL.md) | Complete scoped reading, located disclosures and honest coverage gaps | 586 |
+| [Financial Performance Analysis](../../skills/financial-performance-analysis/SKILL.md) | Comparable movements, supported drivers, earnings quality and cash conversion | 584 |
+| [Repayment and Structure](../../skills/repayment-and-structure/SKILL.md) | Borrower liquidity/debt service, covenant analysis, protections and conditions | 577 |
+| [FP Lead](../../skills/fp-lead/SKILL.md) | Concise approval case, controlled revisions, Credit replies and scoped readiness | 763 |
+| [Investment Grill](../../skills/investment-grill/SKILL.md) | Original-evidence challenge and focused recheck findings | 603 |
+| [Template and Style Reviewer](../../skills/fp-template-style-reviewer/SKILL.md) | Binding template rules, clear prose, preserved meaning and actual layout status | 532 |
 
-Each skill links its local copies of the shared rules and [workflow contract](../shared/workflow-contract.md). Performance and repayment skills additionally have targeted method references, loaded only for the relevant work. Shared references are maintained once in `shared/` and copied identically into each skill to satisfy Microsoft's self-contained companion-path requirements.
+Each skill links its local copies of the shared rules and [workflow contract](../../shared/workflow-contract.md). Performance and repayment skills additionally have targeted method references, loaded only for the relevant work. Shared references are maintained once in `shared/` and copied identically into each skill to satisfy Microsoft's self-contained companion-path requirements.
 
 ## Review of the original pack
 
@@ -62,7 +64,7 @@ The finance precedents are concrete methods, not claims of guaranteed accuracy. 
 
 The fresh-agent baseline and revised-skill behavioral runs were **not executed**: delegated reviewers hit the account usage limit during this turn. Do not interpret scenario preparation, arithmetic checks or editorial review as a measured behavioral pass. Earlier agents did complete design/authoring reviews before that limit, but they did not execute these final seven skill sources.
 
-Run the [raw scenarios](../evaluations/scenarios.md) with fresh actors and keep the [reviewer guide](../evaluations/reviewer-guide.md) hidden from them. Validate on the exact tenant model and available tools, then perform the real-report/template replays in the [v3 plan](design-v3.md). Whole-report recall, actual Word preservation and reliable remote publication remain runtime acceptance tests.
+Run the [raw scenarios](../../evaluations/scenarios.md) with fresh actors and keep the [reviewer guide](../../evaluations/reviewer-guide.md) hidden from them. Validate on the exact tenant model and available tools, then perform the real-report/template replays in the [v3 plan](design-v3.md). Whole-report recall, actual Word preservation and reliable remote publication remain runtime acceptance tests.
 
 ## Handover and maintenance
 
@@ -78,10 +80,10 @@ This is a design judgment, not a demonstrated house-style match. No actual appro
 
 ## 2 October packaging and review refinement
 
-FP Lead and Investment Grill now include the [material-checkpoint review protocol](../shared/review-protocol.md), including a fresh arbiter mode for consequential disputes. This amendment has been structurally checked but not behaviorally evaluated in the work tenant. The updated sources are bundled in a compatible-plugin preview; see [installation limits](../INSTALL.md). Earlier behavioral results apply only to the recorded cases and versions.
+FP Lead and Investment Grill now include the [material-checkpoint review protocol](../../shared/review-protocol.md), including a fresh arbiter mode for consequential disputes. This amendment has been structurally checked but not behaviorally evaluated in the work tenant. The updated sources are bundled in a compatible-plugin preview; see [installation limits](../../INSTALL.md). Earlier behavioral results apply only to the recorded cases and versions.
 
 ## 2 October email and guidance expansion — preview 0.2.0
 
-The eighth skill is now titled Deal Updates and Guidance, retaining `meeting-evidence-review` as its identifier. It covers relevant recent emails, attachments, threads and meeting material; explicit review scope/cutoff; ambiguous guidance; source authority and supersession; and prioritised implications for the whole FP. FP Lead invokes the refresh before drafting, material revision and readiness assessment. The [new test record](../evaluations/deal-updates-review.md) distinguishes its fresh-actor result from actual mailbox integration.
+The eighth skill is now titled Deal Updates and Guidance, retaining `meeting-evidence-review` as its identifier. It covers relevant recent emails, attachments, threads and meeting material; explicit review scope/cutoff; ambiguous guidance; source authority and supersession; and prioritised implications for the whole FP. FP Lead invokes the refresh before drafting, material revision and readiness assessment. The [new test record](../../evaluations/deal-updates-review.md) distinguishes its fresh-actor result from actual mailbox integration.
 
 The startup instructions now make full-FP drafting the normal path. A representative section is optional setup/style calibration after understanding the deal. No ninth skill, background monitoring or new connector was added.

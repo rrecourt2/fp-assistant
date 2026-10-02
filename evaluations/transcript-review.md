@@ -6,7 +6,7 @@
 
 An independent design reviewer examined the fit with v3 and the user's transcript workflow. Its main corrections were to retain unexpected contrary evidence, distinguish suggestions from decisions, preserve source/correction provenance and keep restricted legal/internal content outside the shared workbook. These are incorporated in the extension and draft skill.
 
-A fresh acting agent receives only the [raw synthetic case](transcript-case.md), the [draft skill](../skills/meeting-evidence-review/SKILL.md) and its two shared references. It does not receive this review guide or the design discussion. The task permits a local test-output file but no live register, Teams or other external action.
+A fresh acting agent receives only the [raw synthetic case](transcript-case.md), the [draft skill](../skills/deal-updates/SKILL.md) and its two shared references. It does not receive this review guide or the design discussion. The task permits a local test-output file but no live register, Teams or other external action.
 
 ## Expected behavior
 
