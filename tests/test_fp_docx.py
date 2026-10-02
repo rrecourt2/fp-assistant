@@ -365,3 +365,20 @@ def test_tables_next_to_a_generated_table_are_kept_apart(tpl, tmp_path):
         xml = z.read("word/document.xml").decode()
     assert "</w:tbl><w:tbl>" not in xml and xml.count("</w:tbl><w:p/><w:tbl>") == 2
     assert len(docx.Document(out).tables) == 4
+
+
+# ---------- reporting ----------
+
+def test_missing_template_sections_are_reported_and_the_build_is_not_complete(tpl, tmp_path):
+    draft = tmp_path / "draft.docx"
+    shutil.copy(tpl, draft)
+    fp_docx.edit_text(draft, '<w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t xml:space="preserve">3. Recommendation',
+                      '<w:pStyle w:val="Normal"/></w:pPr><w:r><w:t xml:space="preserve">3. Recommendation')
+    out = tmp_path / "v1.docx"
+    r = fp_docx.build(draft, write(tmp_path / "c.md", FIRST), out, mode="existing", template=tpl)
+    assert r["missing_sections"] == ["recommendation"] and r["unmatched"] == ["recommendation"]
+    assert r["complete"] is False
+    assert fp_docx.check(out, tpl)["missing_sections"] == ["recommendation"]
+    ok = fp_docx.build(tpl, write(tmp_path / "c2.md", FIRST), tmp_path / "v2.docx", mode="first", template=tpl)
+    assert ok["missing_sections"] == [] and ok["unmatched"] == [] and ok["frozen"] == {}
+    assert ok["complete"] is True

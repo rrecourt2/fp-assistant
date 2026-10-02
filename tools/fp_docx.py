@@ -573,6 +573,8 @@ def build(base, content, out, mode="normal", template=None, fields=None, protect
     unknown = sorted(set(protect) - set(by_id))
     if unknown:
         raise Refuse(f"--protect names no section of the document: {', '.join(unknown)}")
+    # The writer cannot insert headings, so template sections absent from the base stay absent.
+    missing_sections = [s["id"] for s in Doc(template).sections if s["id"] not in by_id] if template else []
     base_sig = {sid: signature(sec) for sid, sec in by_id.items()}
     edits, written, frozen, unmatched = [], [], {}, []
     for sid, item in wanted.items():
@@ -622,9 +624,9 @@ def build(base, content, out, mode="normal", template=None, fields=None, protect
             lines += [f"## {sid}", f"_Not applied: {reason}._", "", wanted[sid]["raw"], ""]
         proposals.write_text("\n".join(lines), encoding="utf-8")
     return {"out": str(out), "written": written, "frozen": frozen, "unmatched": unmatched,
-            "missing_fields": missing_fields, "protected_fields": protected_fields,
-            "proposals": str(proposals) if proposals else None,
-            "sha256": file_sha256(out)}
+            "missing_sections": missing_sections, "missing_fields": missing_fields,
+            "protected_fields": protected_fields, "proposals": str(proposals) if proposals else None,
+            "complete": not (missing_sections or unmatched or frozen), "sha256": file_sha256(out)}
 
 
 # ---------- inspect and check ----------
@@ -688,6 +690,7 @@ def check(path, template=None):
         problems.append("source tags left in the text")
     if "{{keep:" in text:
         problems.append("unplaced {{keep:N}} markers left in the text")
+    missing = []
     if template:
         tpl = Doc(template)
         ids = [s["id"] for s in doc.sections]
@@ -701,7 +704,7 @@ def check(path, template=None):
             if guidance and mine and " ".join(k.plain() for k in mine["body"]).strip() == guidance:
                 problems.append(f"{s['id']}: still contains the template's guidance text")
     info = inspect(path)
-    return {"file": str(path), "problems": problems,
+    return {"file": str(path), "problems": problems, "missing_sections": missing,
             "sections_with_comments": [s["id"] for s in info["sections"] if s["has_comments"]],
             "sections_with_tracked_changes": [s["id"] for s in info["sections"] if s["has_tracked_changes"]]}
 
