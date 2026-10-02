@@ -42,7 +42,7 @@ TRACKED = {"ins", "del", "moveFrom", "moveTo", "pPrChange", "rPrChange", "tblPrC
            "trPrChange", "tcPrChange", "sectPrChange", "cellIns", "cellDel"}
 COMMENT = {"commentRangeStart", "commentRangeEnd", "commentReference"}
 FIXED = {"drawing", "pict", "object", "fldChar", "fldSimple", "instrText", "sectPr", "sdt",
-         "AlternateContent", "oMath"}
+         "AlternateContent", "oMath", "footnoteReference", "endnoteReference"}
 NOISE = {"proofErr", "lastRenderedPageBreak"}
 LAYOUT = {"tblPr", "tblGrid", "trPr", "tcPr", "tblPrEx"}  # table layout Word rewrites when it saves
 
@@ -187,6 +187,8 @@ class Doc:
         self.styles, self.default_style = style_info(self.parts.get("word/styles.xml"))
         self.style_id = {name: sid for sid, (name, _) in self.styles.items()}
         self.body = self.root.find("body")
+        if self.body is None:
+            raise Refuse(f"{self.path.name} has no document body")
         self.goback = {n.wattr("id") for n in self.root.iter()  # Word's "last edit" bookmark is save noise
                        if n.tag == "bookmarkStart" and n.wattr("name") == "_GoBack"}
         self.sections = self._sections()
@@ -226,11 +228,18 @@ class Doc:
                 for c in scan(xml).kids if c.tag == "comment"}
 
 
-def canon(n, doc):
+def canon(n, doc, masked=()):
     """n as nested lists [tag, attributes, text, children] without the noise of a Word save: w14 and
     rsid attributes, xml:space (the exact text is kept), proofing marks, _GoBack, run languages,
     paragraph-mark properties, the default paragraph style and table layout. Adjacent runs with equal
-    properties are merged."""
+    properties are merged. A cell in `masked` (filled through --fields) counts by its formatting and
+    protected marks only."""
+    if id(n) in masked:
+        p = n.find("p")
+        r = p.find("r") if p is not None else None
+        keep = [x for x in (p and p.find("pPr"), r and r.find("rPr")) if x is not None]
+        return ["filled cell", [], "", [canon(x, doc) for x in keep + [
+            x for x in n.iter() if x.tag in COMMENT | TRACKED | {"hyperlink"}]]]
     attrs = sorted([k, v] for k, v in n.attrs.items() if k != XML_SPACE and not k.startswith(W14 + " ")
                    and not k.rpartition(" ")[2].startswith("rsid"))
     if n.tag == "tbl":
@@ -243,7 +252,7 @@ def canon(n, doc):
                 or (k.tag in ("bookmarkStart", "bookmarkEnd") and k.wattr("id") in doc.goback)
                 or (n.tag == "pPr" and (k.tag == "rPr" or k.tag == "pStyle" and k.wattr("val") == doc.default_style))):
             continue
-        c = canon(k, doc)
+        c = canon(k, doc, masked)
         if not (k.tag in ("pPr", "rPr") and not c[1] and not c[3]):  # properties that became empty
             merge(out[3], c)
     return out
@@ -267,20 +276,45 @@ def signature(sec):
     return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
 
+def fixed_node(n, goback):
+    """An object, field, control, section break, note reference, bookmark or page/column break."""
+    return (n.tag in FIXED or (n.tag in ("bookmarkStart", "bookmarkEnd") and n.wattr("id") not in goback)
+            or (n.tag == "br" and n.wattr("type") in ("page", "column")))
+
+
 def is_fixed(k):
-    """Content this tool must keep in place: template tables, objects, fields, controls, breaks."""
+    """Content this tool must keep in place: template tables, captions and paragraphs with fixed nodes."""
     if k.tag == "tbl":
         d = k.find("tblPr", "tblDescription")
         return not (d is not None and d.wattr("val") == AI_TAG)
     if k.tag != "p":
         return True
-    tags = {n.tag for n in k.iter()}
-    if tags & FIXED:
-        return True
-    if any(n.tag == "bookmarkStart" and n.wattr("name") != "_GoBack" for n in k.iter()):
+    goback = {n.wattr("id") for n in k.iter() if n.tag == "bookmarkStart" and n.wattr("name") == "_GoBack"}
+    if any(fixed_node(n, goback) for n in k.iter()):
         return True
     style = k.find("pPr", "pStyle")
     return style is not None and "caption" in (style.wattr("val") or "").lower()
+
+
+def inventory(doc, filled=()):
+    """The fixed objects of the whole body as a sorted list (a multiset). Cover cells filled through
+    --fields (indexes among all w:tc) count by their formatting only."""
+    tcs = [n for n in doc.body.iter() if n.tag == "tc"]
+    masked, out = {id(tcs[i]) for i in filled}, []
+    for n in doc.body.iter():
+        if n.tag == "bookmarkStart" and n.wattr("name") != "_GoBack":
+            out.append(f"bookmark {n.wattr('name')}")
+        elif n.tag in ("instrText", "fldSimple"):
+            out.append("field " + (n.wattr("instr") or "".join(n.text)))
+        elif n.tag in ("drawing", "pict", "object"):
+            out.append("object")
+        elif n.tag == "tbl" and is_fixed(n):
+            out.append("table " + json.dumps(canon(n, doc, masked)))
+        elif n.tag in ("sdt", "sectPr", "footnoteReference", "endnoteReference"):
+            out.append(f"{n.tag} {n.wattr('id') or ''}")
+        elif n.tag == "br" and n.wattr("type") in ("page", "column"):
+            out.append(f"break {n.wattr('type')}")
+    return sorted(out)
 
 
 def flags(sec):
@@ -439,21 +473,22 @@ def splice(xml, edits):
 
 
 def fill_fields(doc, xml, fields):
-    """Set the cell right of a matching label cell on the cover (before the first heading),
-    keeping paragraph and run formatting. Cells with comments, tracked changes, fields,
-    content controls or images are protected and left alone."""
-    want, done, edits = {norm(k): str(v) for k, v in fields.items()}, set(), []
+    """Set the cell right of a matching label cell on the cover (before the first heading), keeping
+    the first paragraph's pPr and first run's rPr. A cell with comments, tracked changes, fixed
+    objects, bookmarks, hyperlinks or nested tables is protected and left alone.
+    Returns the new xml, the filled cells (indexes among all w:tc), missing and protected labels."""
+    want, done, protected, edits, filled = {norm(k): str(v) for k, v in fields.items()}, set(), set(), [], []
     limit = doc.sections[0]["head"].start if doc.sections else len(xml)  # sections are spliced after this point
-    for tr in (n for n in scan(xml).iter() if n.tag == "tr" and n.start < limit):
+    tcs = [n for n in doc.body.iter() if n.tag == "tc"]
+    for tr in (n for n in doc.body.iter() if n.tag == "tr" and n.start < limit):
         cells = [c for c in tr.kids if c.tag == "tc"]
         for label, value in zip(cells, cells[1:]):
-            key = norm(label.plain())
-            if key not in want or key in done:
+            key, paras = norm(label.plain()), [k for k in value.kids if k.tag == "p"]
+            if key not in want or key in done or not paras:
                 continue
-            if {n.tag for n in value.iter()} & (COMMENT | TRACKED | FIXED):
-                continue
-            paras = [k for k in value.kids if k.tag == "p"]
-            if not paras:
+            if any(fixed_node(n, doc.goback) or n.tag in COMMENT | TRACKED | {"hyperlink", "tbl"}
+                   for n in value.iter()) or any(map(is_fixed, paras)):
+                protected.add(key)
                 continue
             ppr, run = paras[0].find("pPr"), paras[0].find("r")
             rpr = run.find("rPr") if run is not None else None
@@ -462,15 +497,27 @@ def fill_fields(doc, xml, fields):
                    f"{xml[rpr.start:rpr.end].decode() if rpr is not None else ''}"
                    f'<{w}:t xml:space="preserve">{escape(ILLEGAL.sub("", want[key]))}</{w}:t></{w}:r></{w}:p>')
             edits.append((paras[0].start, paras[-1].end, new.encode("utf-8")))
+            filled.append(tcs.index(value))
             done.add(key)
-    return splice(xml, edits), sorted(k for k in fields if norm(k) not in done)
+    missing = sorted(k for k in fields if norm(k) not in done)
+    return splice(xml, edits), filled, missing, [k for k in missing if norm(k) in protected]
 
 
-def write_docx(doc, xml, out):
-    """Validate the new document.xml, write the zip to a temp file, re-read it, then rename."""
-    new_root = scan(xml)
-    if new_root.find("body") is None:
-        raise Refuse("generated document has no body")
+def verify(base, new, written, filled):
+    """The preservation check: refuse unless everything this build did not write is unchanged."""
+    if [s["id"] for s in new.sections] != [s["id"] for s in base.sections]:
+        raise Refuse("headings changed during the build; nothing written")
+    changed = [a["id"] for a, b in zip(base.sections, new.sections)
+               if a["id"] not in written and signature(a) != signature(b)]
+    if changed:
+        raise Refuse(f"sections not written in this build changed ({', '.join(changed)}); nothing written")
+    if inventory(base, filled) != inventory(new, filled):
+        raise Refuse("fixed objects (bookmarks, fields, objects, tables, content controls, breaks or notes) "
+                     "changed; nothing written")
+
+
+def write_docx(doc, xml, out, written, filled):
+    """Write the zip to a temp file, run the preservation check on it, then rename it into place."""
     out = Path(out)
     fd, tmp = tempfile.mkstemp(dir=out.parent, suffix=".docx.tmp")
     os.close(fd)
@@ -478,9 +525,7 @@ def write_docx(doc, xml, out):
         with zipfile.ZipFile(tmp, "w") as z:
             for info in doc.infos:
                 z.writestr(info, xml if info.filename == "word/document.xml" else doc.parts[info.filename])
-        check_doc = Doc(tmp)
-        if [s["id"] for s in check_doc.sections] != [s["id"] for s in doc.sections]:
-            raise Refuse("headings changed during the build; nothing written")
+        verify(doc, Doc(tmp), written, filled)
         os.replace(tmp, out)
     finally:
         if os.path.exists(tmp):
@@ -541,10 +586,10 @@ def build(base, content, out, mode="normal", template=None, fields=None, protect
             edits.append((start, end, render(doc, sec, item["blocks"]).encode("utf-8")))
             written.append(sid)
     xml = splice(doc.xml, edits)
-    missing_fields = []
+    filled, missing_fields, protected_fields = [], [], []
     if fields:
-        xml, missing_fields = fill_fields(doc, xml, fields)
-    write_docx(doc, xml, out)
+        xml, filled, missing_fields, protected_fields = fill_fields(doc, xml, fields)
+    write_docx(doc, xml, out, written, filled)
     new = Doc(out)
     sections = {}
     for sec in new.sections:
@@ -569,7 +614,8 @@ def build(base, content, out, mode="normal", template=None, fields=None, protect
             lines += [f"## {sid}", f"_Not applied: {reason}._", "", wanted[sid]["raw"], ""]
         proposals.write_text("\n".join(lines), encoding="utf-8")
     return {"out": str(out), "written": written, "frozen": frozen, "unmatched": unmatched,
-            "missing_fields": missing_fields, "proposals": str(proposals) if proposals else None,
+            "missing_fields": missing_fields, "protected_fields": protected_fields,
+            "proposals": str(proposals) if proposals else None,
             "sha256": file_sha256(out)}
 
 

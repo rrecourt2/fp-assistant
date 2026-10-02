@@ -272,3 +272,52 @@ def test_generated_paragraphs_have_no_explicit_default_style(tpl, tmp_path):
         xml = z.read("word/document.xml").decode()
     assert "<w:p><w:r><w:t xml:space=\"preserve\">Approve.</w:t></w:r></w:p>" in xml
     assert 'w:val="Normal"' not in xml
+
+
+# ---------- preservation ----------
+
+def test_page_breaks_notes_and_bookmarks_in_a_written_section_survive(tpl, tmp_path):
+    guidance = '<w:t xml:space="preserve">[Summarise the proposal]</w:t></w:r></w:p>'
+    fp_docx.edit_text(tpl, guidance, guidance + '<w:p><w:r><w:br w:type="page"/></w:r></w:p>'
+                      '<w:p><w:r><w:t>Source</w:t></w:r><w:r><w:footnoteReference w:id="1"/></w:r></w:p>'
+                      '<w:p><w:r><w:t>Anchor</w:t></w:r><w:bookmarkEnd w:id="3"/></w:p>')
+    fp_docx.edit_text(tpl, "<w:body>", '<w:body><w:p><w:bookmarkStart w:id="3" w:name="Cover"/></w:p>')
+    out = tmp_path / "v1.docx"
+    r = fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), out, mode="first", template=tpl)
+    assert "summary" in r["written"]
+    with zipfile.ZipFile(out) as z:
+        xml = z.read("word/document.xml").decode()
+    assert "[Summarise the proposal]" not in xml and "Cedar Foods seeks EUR 12m." in xml
+    assert '<w:br w:type="page"/>' in xml and '<w:footnoteReference w:id="1"/>' in xml
+    assert '<w:bookmarkEnd w:id="3"/>' in xml
+
+
+def test_bookmark_in_a_cover_value_cell_protects_it(tpl, tmp_path):
+    fp_docx.edit_text(tpl, "<w:r><w:t>[name]</w:t></w:r>",
+                      '<w:bookmarkStart w:id="4" w:name="BorrowerName"/><w:r><w:t>[name]</w:t></w:r>'
+                      '<w:bookmarkEnd w:id="4"/>')
+    out = tmp_path / "v1.docx"
+    r = fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), out, mode="first", template=tpl,
+                      fields={"Borrower": "Cedar Foods", "Amount": "EUR 12m"})
+    assert r["protected_fields"] == ["Borrower"] and r["missing_fields"] == ["Borrower"]
+    cells = [c.text for t in docx.Document(out).tables for row in t.rows for c in row.cells]
+    assert "[name]" in cells and "EUR 12m" in cells
+
+
+def test_build_that_loses_a_kept_object_is_refused_and_writes_nothing(tmp_path, monkeypatch):
+    tpl = tmp_path / "template.docx"
+    fp_docx.make_template(tpl, comment_on="market-risk")      # a frozen section, so proposals would be due
+    monkeypatch.setattr(fp_docx, "render", lambda doc, sec, items: fp_docx.Gen(doc).p("Lost the table.", None))
+    with pytest.raises(fp_docx.Refuse, match="nothing written"):
+        fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), tmp_path / "FP-v01.docx", mode="first", template=tpl)
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["c.md", "template.docx"]
+
+
+def test_build_that_changes_a_section_it_did_not_write_is_refused(tmp_path, monkeypatch):
+    tpl = tmp_path / "template.docx"
+    fp_docx.make_template(tpl, comment_on="market-risk")
+    real = fp_docx.splice
+    monkeypatch.setattr(fp_docx, "splice", lambda xml, edits: real(xml, edits).replace(b"[Describe", b"[Rewrite"))
+    with pytest.raises(fp_docx.Refuse, match="market-risk"):
+        fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), tmp_path / "FP-v01.docx", mode="first", template=tpl)
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["c.md", "template.docx"]
