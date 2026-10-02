@@ -100,7 +100,7 @@ def test_fields_in_a_later_round_change_only_the_requested_cover_value(tpl, tmp_
 def test_signature_ignores_word_save_noise(tpl, tmp_path):
     v1 = tmp_path / "v1.docx"
     fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), v1, mode="first", template=tpl)
-    before = {s["id"]: fp_docx.signature(s) for s in fp_docx.Doc(v1).sections}
+    before = fp_docx.signatures(fp_docx.Doc(v1))
     with zipfile.ZipFile(v1) as z:
         parts = {i.filename: z.read(i.filename) for i in z.infolist()}
     xml = parts["word/document.xml"]
@@ -112,7 +112,7 @@ def test_signature_ignores_word_save_noise(tpl, tmp_path):
     with zipfile.ZipFile(v1, "w") as z:
         for name, data in parts.items():
             z.writestr(name, data)
-    after = {s["id"]: fp_docx.signature(s) for s in fp_docx.Doc(v1).sections}
+    after = fp_docx.signatures(fp_docx.Doc(v1))
     assert before == after
 
 
@@ -228,9 +228,10 @@ def test_existing_draft_rewrites_unprotected_sections_then_normal_rounds_follow_
 WORD = Path(__file__).parent / "fixtures" / "word-saved"   # synthetic FP built by the tool, then saved by Word
 
 
-def test_real_word_save_changes_only_the_edited_section():
-    before = {s["id"]: fp_docx.signature(s) for s in fp_docx.Doc(WORD / "assistant-v1.docx").sections}
-    after = {s["id"]: fp_docx.signature(s) for s in fp_docx.Doc(WORD / "word-saved-v1.docx").sections}
+@pytest.mark.parametrize("version", [1, 2])
+def test_real_word_save_changes_only_the_edited_section(version):
+    before = fp_docx.signatures(fp_docx.Doc(WORD / f"assistant-v{version}.docx"))
+    after = fp_docx.signatures(fp_docx.Doc(WORD / f"word-saved-v{version}.docx"))
     assert list(before) == list(after) == ["summary", "financial-analysis", "market-risk", "recommendation"]
     assert [sid for sid in before if before[sid] != after[sid]] == ["recommendation"]
 
@@ -238,8 +239,8 @@ def test_real_word_save_changes_only_the_edited_section():
 def test_rounds_after_a_real_word_save_write_untouched_sections_and_keep_the_officers_text(tmp_path):
     base, v2, v3 = (tmp_path / f"FP-v0{n}.docx" for n in (1, 2, 3))
     shutil.copy(WORD / "word-saved-v1.docx", base)
-    record = {s["id"]: {"owner": "ai", "signature": fp_docx.signature(s), "ids": []}
-              for s in fp_docx.Doc(WORD / "assistant-v1.docx").sections}
+    record = {sid: {"owner": "ai", "signature": sig, "ids": []}
+              for sid, sig in fp_docx.signatures(fp_docx.Doc(WORD / "assistant-v1.docx")).items()}
     write(tmp_path / "FP-v01.sections.json", json.dumps({"base": "template.docx", "sections": record}))
     r = fp_docx.build(base, write(tmp_path / "c.md", "## summary\nNew summary.\n\n## recommendation\nDecline.\n"),
                       v2, template=WORD / "template.docx", fields={"Amount": "EUR 15m"})
@@ -321,7 +322,7 @@ def test_bookmark_in_a_cover_value_cell_protects_it(tpl, tmp_path):
 def test_build_that_loses_a_kept_object_is_refused_and_writes_nothing(tmp_path, monkeypatch):
     tpl = tmp_path / "template.docx"
     fp_docx.make_template(tpl, comment_on="market-risk")      # a frozen section, so proposals would be due
-    monkeypatch.setattr(fp_docx, "render", lambda doc, sec, items: fp_docx.Gen(doc).p("Lost the table.", None))
+    monkeypatch.setattr(fp_docx, "render", lambda doc, sec, items, inc: fp_docx.Gen(doc).p("Lost the table.", None))
     with pytest.raises(fp_docx.Refuse, match="nothing written"):
         fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), tmp_path / "FP-v01.docx", mode="first", template=tpl)
     assert sorted(p.name for p in tmp_path.iterdir()) == ["c.md", "template.docx"]
@@ -382,19 +383,21 @@ def test_tables_next_to_a_generated_table_are_kept_apart(tpl, tmp_path):
 
 # ---------- reporting ----------
 
-def test_missing_template_sections_are_reported_and_text_under_them_is_kept(tpl, tmp_path):
-    draft = tmp_path / "draft.docx"   # the officer typed "3. Recommendation" as bold text, not as a heading
+@pytest.mark.parametrize("heading", ["3. Recommendation", "3.Recommendation", "3 Recommendation",
+                                      "3. Recommendation and conditions"])
+def test_missing_template_sections_are_reported_and_text_under_them_is_kept(tpl, tmp_path, heading):
+    draft = tmp_path / "draft.docx"   # the officer typed a bold paragraph, not a heading
     shutil.copy(tpl, draft)
     fp_docx.edit_text(draft, '<w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t xml:space="preserve">3. Recommendation',
                       '<w:pStyle w:val="Normal"/></w:pPr><w:r><w:rPr><w:b/></w:rPr>'
-                      '<w:t xml:space="preserve">3. Recommendation')
+                      f'<w:t xml:space="preserve">{heading}')
     fp_docx.edit_text(draft, "[State the recommendation]", "Approve with two covenants (officer text).")
     out = tmp_path / "v1.docx"
     r = fp_docx.build(draft, write(tmp_path / "c.md", FIRST), out, mode="existing", template=tpl)
     assert r["missing_sections"] == ["recommendation"] and r["unmatched"] == ["recommendation"]
     assert "recommendation" in r["frozen"]["market-risk"] and r["complete"] is False
     md = fp_docx.to_markdown(out)
-    assert "3. Recommendation" in md and "Approve with two covenants (officer text)." in md
+    assert heading in md and "Approve with two covenants (officer text)." in md
     proposals = (tmp_path / "v1.proposals.md").read_text()
     assert "Milk prices rose." in proposals and "Approve." in proposals
     assert fp_docx.check(out, tpl)["missing_sections"] == ["recommendation"]
@@ -421,6 +424,7 @@ def test_duplicate_draft_sections_are_refused_and_stray_text_is_reported(tpl, tm
     r = fp_docx.build(tpl, write(tmp_path / "c2.md", "Draft for Cedar Foods\n\n## summary\nA.\n"), tmp_path / "v2.docx",
                       mode="first", template=tpl)
     assert r["written"] == ["summary"] and "Draft for Cedar Foods" in r["warnings"][0]
+    assert r["complete"] is False
 
 
 def test_cli_refuses_bad_input_with_exit_3_and_no_traceback(tpl, tmp_path, capsys):
@@ -590,8 +594,8 @@ def test_cover_field_fill_that_loses_its_formatting_is_refused(tpl, tmp_path, mo
     fp_docx.edit_text(tpl, "<w:r><w:t>[name]</w:t></w:r>", "<w:r><w:rPr><w:b/></w:rPr><w:t>[name]</w:t></w:r>")
     real = fp_docx.fill_fields
 
-    def lossy(doc, xml, fields):
-        new, *rest = real(doc, xml, fields)
+    def lossy(doc, xml, fields, inc):
+        new, *rest = real(doc, xml, fields, inc)
         return (new.replace(b"<w:rPr><w:b/></w:rPr>", b"", 1), *rest)
 
     monkeypatch.setattr(fp_docx, "fill_fields", lossy)
@@ -616,7 +620,9 @@ def edit_xml(path, pattern, repl):
 
 
 GEN_ROW = "</w:tblGrid><w:tr><w:tc><w:tcPr>"           # first row of the assistant table only
-GEN_PR = '<w:tblW w:w="0" w:type="auto"/><w:tblDescription'
+GEN_PR = '<w:tblW w:w="0" w:type="auto"/><w:tblLook'
+WORD_LOOK = ('<w:tblLook w:val="04A0" w:firstRow="1" w:lastRow="0" w:firstColumn="1" '
+             'w:lastColumn="0" w:noHBand="0" w:noVBand="1"/>')
 TABLE_EDITS = {  # name: (pattern, replacement, freezes)
     "shading": ("</w:tcPr>", '<w:shd w:val="clear" w:color="auto" w:fill="FFFF00"/></w:tcPr>', True),
     "table style": ('<w:tblStyle w:val="TableGrid"/>', '<w:tblStyle w:val="LightShading"/>', True),
@@ -624,12 +630,13 @@ TABLE_EDITS = {  # name: (pattern, replacement, freezes)
     "column width": ('<w:tcW w:w="[0-9]+" w:type="[a-z]+"/>', '<w:tcW w:w="2400" w:type="dxa"/>', True),
     "grid": ('<w:gridCol w:w="4500"/><w:gridCol w:w="4500"/>' + GEN_ROW,
              '<w:gridCol w:w="1031"/><w:gridCol w:w="1343"/>' + GEN_ROW, False),
-    "indent": (GEN_PR, '<w:tblW w:w="0" w:type="auto"/><w:tblInd w:w="10" w:type="dxa"/><w:tblDescription', False),
+    "indent": (GEN_PR, '<w:tblW w:w="0" w:type="auto"/><w:tblInd w:w="10" w:type="dxa"/><w:tblLook', False),
     "cell margins": (GEN_PR, '<w:tblW w:w="0" w:type="auto"/><w:tblCellMar><w:left w:w="10" w:type="dxa"/>'
-                     '</w:tblCellMar><w:tblDescription', False),
-    "zero look": (GEN_PR, '<w:tblW w:w="0" w:type="auto"/><w:tblLook w:val="0000" w:firstRow="0" '
-                  'w:noVBand="0"/><w:tblDescription', False),
-    "nil width": (GEN_PR, '<w:tblW w:w="0" w:type="nil"/><w:tblDescription', False),
+                     '</w:tblCellMar><w:tblLook', False),
+    "zero look": (WORD_LOOK, '<w:tblLook w:val="0000" w:firstRow="0" w:noVBand="0"/>', True),
+    "header look off": (WORD_LOOK, WORD_LOOK.replace('w:firstRow="1"', 'w:firstRow="0"'), True),
+    "look hex only": (WORD_LOOK, '<w:tblLook w:val="04A0"/>', False),
+    "nil width": (GEN_PR, '<w:tblW w:w="0" w:type="nil"/><w:tblLook', False),
     "row exceptions": (GEN_ROW, "</w:tblGrid><w:tr><w:tblPrEx><w:tblCellMar><w:top w:w=\"0\" w:type=\"dxa\"/>"
                        "</w:tblCellMar></w:tblPrEx><w:tc><w:tcPr>", False),
 }
@@ -652,6 +659,7 @@ def test_generated_tables_carry_no_explicit_widths(tpl, tmp_path):
         xml = z.read("word/document.xml").decode()
     table = xml[xml.index("<w:tblStyle"):xml.index("</w:tbl>", xml.index("<w:tblStyle"))]
     assert 'w:type="dxa"' not in table and '<w:tcW w:w="0" w:type="auto"/>' in table
+    assert WORD_LOOK + '<w:tblDescription' in table
 
 
 # ---------- Task 2b: hidden bookmarks ----------
@@ -707,7 +715,7 @@ def test_paragraph_with_a_referenced_hidden_bookmark_stays(tpl, tmp_path, where)
 def test_hidden_bookmark_markers_are_not_edits_but_text_changes_are(tpl, tmp_path):
     v1 = tmp_path / "v1.docx"
     fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), v1, mode="first", template=tpl)
-    signature = lambda: fp_docx.signature(fp_docx.Doc(v1).sections[-1])  # noqa: E731
+    signature = lambda: fp_docx.signatures(fp_docx.Doc(v1))["recommendation"]  # noqa: E731
     before = signature()
     marked = f'<w:bookmarkStart w:id="8" w:name="{HLK}"/>{APPROVE}<w:bookmarkEnd w:id="8"/>'
     fp_docx.edit_text(v1, APPROVE, marked)
@@ -766,14 +774,14 @@ def test_find_record_is_ambiguous_when_two_records_fit_equally(tpl, tmp_path):
     assert found["ambiguous"] is True and found["source"] is None and len(found["candidates"]) == 2
 
 
-def test_first_draft_without_records_has_no_candidates_and_uses_existing(tpl, tmp_path):
+def test_first_draft_without_records_is_ambiguous_and_can_explicitly_use_existing(tpl, tmp_path):
     deal = tmp_path / "deal"
     deal.mkdir()
     draft = deal / "Officer draft.docx"
     shutil.copy(tpl, draft)
     fp_docx.edit_text(draft, "[State the recommendation]", "Approve (officer).")
     assert fp_docx.find_record(draft) == {"docx": str(draft), "folder": str(deal), "candidates": [],
-                                          "source": None, "ambiguous": False}
+                                          "source": None, "ambiguous": True}
     r = fp_docx.build(draft, write(deal / "c.md", "## summary\nS.\n"), deal / "FP-v01.docx", mode="existing",
                       template=tpl)
     assert r["written"] == ["summary"] and "Approve (officer)." in fp_docx.to_markdown(deal / "FP-v01.docx")
@@ -786,3 +794,73 @@ def test_fields_in_a_normal_round_are_refused_when_the_first_heading_lost_its_st
     with pytest.raises(fp_docx.Refuse, match="record starts with 'summary'"):
         fp_docx.build(v1, write(tmp_path / "c2.md", "## market-risk\nM.\n"), v2, fields={"Amount": "EUR 15m"})
     assert not v2.exists()
+
+
+def test_record_cannot_override_the_record_beside_the_base(tpl, tmp_path):
+    v1, v2, v3 = (tmp_path / f"v{n}.docx" for n in (1, 2, 3))
+    fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), v1, mode="first", template=tpl)
+    fp_docx.build(v1, write(tmp_path / "c2.md", "## summary\nNew summary.\n"), v2, protect=["market-risk"])
+    before = v2.read_bytes(), (tmp_path / "v2.sections.json").read_bytes()
+    with pytest.raises(fp_docx.Refuse, match="--record.*v2.sections.json.*exists"):
+        fp_docx.build(v2, write(tmp_path / "c3.md", "## market-risk\nM.\n"), v3,
+                      record=tmp_path / "v1.sections.json")
+    assert not v3.exists() and not (tmp_path / "v3.sections.json").exists()
+    assert before == (v2.read_bytes(), (tmp_path / "v2.sections.json").read_bytes())
+
+
+# ---------- Task 2c: one set of incidental bookmarks for base and output ----------
+
+SUM_RUN, FIG_RUN, REC_RUN = (f'<w:r><w:t xml:space="preserve">[{t}]</w:t></w:r>'
+                             for t in ("Summarise the proposal", "Explain the figures", "State the recommendation"))
+
+
+def test_hidden_bookmark_across_two_sections_lets_each_be_rewritten_without_duplicates(tpl, tmp_path):
+    # X20: Word's copy marker starts in summary and ends in financial-analysis; redrafting summary orphans the end.
+    v1, v2, v3 = (tmp_path / f"v{n}.docx" for n in (1, 2, 3))
+    fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), v1, mode="first", template=tpl)
+    summary, revenue = (f'<w:r><w:t xml:space="preserve">{t}</w:t></w:r>'
+                        for t in ("Cedar Foods seeks EUR 12m.", "Revenue rose 20%."))
+    fp_docx.edit_text(v1, summary, f'<w:bookmarkStart w:id="9" w:name="{HLK}"/>{summary}')
+    fp_docx.edit_text(v1, revenue, f'{revenue}<w:bookmarkEnd w:id="9"/>')
+    assert fp_docx.build(v1, write(tmp_path / "c2.md", "## summary\nNew summary.\n"), v2)["written"] == ["summary"]
+    r = fp_docx.build(v2, write(tmp_path / "c3.md", "## financial-analysis\nRevenue rose 25%.\n\n{{keep:1}}\n"), v3)
+    assert r["written"] == ["financial-analysis"]
+    md = fp_docx.to_markdown(v3)
+    assert "Revenue rose 25%." in md and "Revenue rose 20%." not in md and "FY2025 (template)" in md
+
+
+def test_link_into_another_section_does_not_block_rewriting_its_own_section(tpl, tmp_path):
+    # X1: the summary links to a hidden bookmark in the recommendation; only the summary is redrafted.
+    draft, v1, v2 = tmp_path / "draft.docx", tmp_path / "v1.docx", tmp_path / "v2.docx"
+    shutil.copy(tpl, draft)
+    fp_docx.edit_text(draft, REC_RUN, f'<w:bookmarkStart w:id="5" w:name="{HLK}"/><w:r><w:t>Officer recommendation.'
+                      '</w:t></w:r><w:bookmarkEnd w:id="5"/>')
+    fp_docx.edit_text(draft, SUM_RUN, '<w:r><w:t xml:space="preserve">Officer summary, </w:t></w:r>'
+                      f'<w:hyperlink w:anchor="{HLK}"><w:r><w:t>see the recommendation</w:t></w:r></w:hyperlink>')
+    r = fp_docx.build(draft, write(tmp_path / "c.md", "## summary\nNew summary.\n"), v1, mode="existing", template=tpl)
+    assert r["written"] == ["summary"]
+    r = fp_docx.build(v1, write(tmp_path / "c2.md", "## summary\nNewer summary.\n\n## recommendation\nDecline.\n"), v2,
+                      template=tpl)
+    assert r["written"] == ["summary"]
+    assert r["frozen"] == {"recommendation": "not written by the assistant in the base version"}
+    md = fp_docx.to_markdown(v2)
+    assert "Newer summary." in md and "New summary." not in md and "Officer summary" not in md
+    assert "Officer recommendation." in md and "Decline." not in md
+
+
+@pytest.mark.parametrize("end_in", ["summary", "financial-analysis"])
+def test_render_that_drops_a_referenced_bookmark_is_still_refused(tpl, tmp_path, monkeypatch, end_in):
+    draft = tmp_path / "draft.docx"
+    shutil.copy(tpl, draft)
+    end = '<w:bookmarkEnd w:id="5"/>'
+    fp_docx.edit_text(draft, SUM_RUN, f'<w:bookmarkStart w:id="5" w:name="{HLK}"/><w:r><w:t>Officer summary.</w:t></w:r>'
+                      + (end if end_in == "summary" else ""))
+    if end_in == "financial-analysis":       # the end survives in a section the build does not touch
+        fp_docx.edit_text(draft, FIG_RUN, FIG_RUN + end)
+    rec = "[State the recommendation]</w:t></w:r></w:p>"
+    fp_docx.edit_text(draft, rec, rec + ANCHOR)   # the link that makes the bookmark functional
+    monkeypatch.setattr(fp_docx, "render", lambda doc, *rest: fp_docx.Gen(doc).p("Lost the bookmark.", None))
+    with pytest.raises(fp_docx.Refuse, match="fixed objects"):
+        fp_docx.build(draft, write(tmp_path / "c.md", "## summary\nNew summary.\n"), tmp_path / "v1.docx",
+                      mode="existing", template=tpl)
+    assert not (tmp_path / "v1.docx").exists()

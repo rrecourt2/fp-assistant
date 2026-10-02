@@ -141,7 +141,7 @@ def scan(buf):
 
 
 def norm(text):
-    text = re.sub(r"^\s*\d+(\.\d+)*\.?\s+", "", text or "")
+    text = re.sub(r"^\s*\d+(\.\d+)*(?:\.\s*|\s+)", "", text or "")
     return re.sub(r"\s+", " ", text).strip().rstrip(":").strip().casefold()
 
 
@@ -231,9 +231,10 @@ class Doc:
         return out
 
     def _incidental_bookmarks(self):
-        """Ids of bookmarks Word adds on its own and nothing refers to: _GoBack and _Hlk... A name used by
-        a hyperlink anchor or a field (REF, PAGEREF, HYPERLINK \\l ...) in the body, headers, footers or
-        notes makes the bookmark functional content."""
+        """Bookmark markers that are noise, as (tag, id): those of _GoBack and of the _Hlk... bookmarks Word
+        adds on its own when nothing refers to them, and an end whose start is gone (its paragraph was
+        rewritten). A name used by a hyperlink anchor or a field (REF, PAGEREF, HYPERLINK \\l ...) in the body,
+        headers, footers or notes makes the bookmark functional content."""
         anchors, codes = [], []
         for name, data in self.parts.items():
             if re.fullmatch(r"word/(document|header\d*|footer\d*|footnotes|endnotes)\.xml", name):
@@ -243,8 +244,12 @@ class Doc:
                     elif n.tag == "instrText":
                         codes.append("".join(n.text))  # a field code may be split over runs
         refs = "\n".join(anchors) + "\n" + "".join(codes)
-        return {n.wattr("id") for n in self.root.iter() if n.tag == "bookmarkStart"
-                and re.match(r"_GoBack$|_Hlk", n.wattr("name") or "") and n.wattr("name") not in refs}
+        marks = [(n.tag, n.wattr("id"), n.wattr("name") or "") for n in self.root.iter()
+                 if n.tag in ("bookmarkStart", "bookmarkEnd")]
+        starts = {i for tag, i, _ in marks if tag == "bookmarkStart"}
+        hidden = {i for tag, i, name in marks if tag == "bookmarkStart"
+                  and re.match(r"_GoBack$|_Hlk", name) and name not in refs}
+        return {(tag, i) for tag, i, _ in marks if i in hidden or i not in starts}
 
     def comments(self):
         """Comment id -> {author, date, text}."""
@@ -258,26 +263,34 @@ class Doc:
 
 def harmless(k):
     """Table layout Word recomputes when it saves (tests/fixtures/word-saved): the grid, automatic
-    widths, row exceptions, indent, cell margins and an all-zero tblLook."""
+    widths, row exceptions, indent and cell margins."""
     return (k.tag in ("tblGrid", "tblPrEx", "tblInd", "tblCellMar")
-            or (k.tag in ("tblW", "tcW") and k.wattr("type") in ("auto", "nil"))
-            or (k.tag == "tblLook" and all(not v.strip("0") or v in ("false", "off") for v in k.attrs.values())))
+            or (k.tag in ("tblW", "tcW") and k.wattr("type") in ("auto", "nil")))
 
 
-def canon(n, doc, masked=()):
+def table_look(n):
+    """The six table-look flags; explicit flags take precedence over the hexadecimal bitmask."""
+    bits = int(n.wattr("val") or "0", 16)
+    return tuple(n.wattr(flag) in ("1", "true", "on") if n.wattr(flag) is not None else bool(bits & (32 << i))
+                 for i, flag in enumerate(("firstRow", "lastRow", "firstColumn", "lastColumn", "noHBand", "noVBand")))
+
+
+def canon(n, doc, inc, masked=()):
     """n as nested lists [tag, attributes, text, children] without the noise of a Word save: w14 and
-    rsid attributes, xml:space (the exact text is kept), proofing marks, incidental bookmarks, run
-    languages, paragraph-mark properties, the default paragraph style and harmless table layout.
+    rsid attributes, xml:space (the exact text is kept), proofing marks, the incidental bookmark markers
+    `inc`, run languages, paragraph-mark properties, the default paragraph style and harmless table layout.
     Adjacent runs with equal properties are merged. A cell in `masked` (filled through --fields) counts
     by its formatting and protected marks only."""
     if id(n) in masked:
         p = n.find("p")
         r = p.find("r") if p is not None else None
         keep = [x for x in (p and p.find("pPr"), r and r.find("rPr")) if x is not None]
-        return ["filled cell", [], "", [canon(x, doc) for x in keep + [
+        return ["filled cell", [], "", [canon(x, doc, inc) for x in keep + [
             x for x in n.iter() if x.tag in COMMENT | TRACKED | {"hyperlink"}]]]
     attrs = sorted([k, v] for k, v in n.attrs.items() if k != XML_SPACE and not k.startswith(W14 + " ")
                    and not k.rpartition(" ")[2].startswith("rsid"))
+    if n.tag == "tblLook":
+        attrs = list(table_look(n))
     if n.tag == "tbl":
         attrs.append(["assistant table", str(not is_fixed(n))])
     text = "".join(n.text)
@@ -285,11 +298,13 @@ def canon(n, doc, masked=()):
            text if n.tag in ("t", "delText", "instrText") else text.strip(), []]
     for k in n.kids:
         default_style = k.tag == "pStyle" and k.wattr("val") == doc.default_style
+        default_look = (k.tag == "tblLook" and table_look(k) ==
+                        ((True, False, True, False, False, True) if n.find("tblStyle") is not None else (False,) * 6))
         if (k.tag in NOISE or harmless(k) or (n.tag == "rPr" and k.tag in ("lang", "noProof"))
-                or (k.tag in ("bookmarkStart", "bookmarkEnd") and k.wattr("id") in doc.incidental)
+                or (k.tag, k.wattr("id")) in inc or default_look
                 or (n.tag == "pPr" and (k.tag == "rPr" or default_style))):
             continue
-        c = canon(k, doc, masked)
+        c = canon(k, doc, inc, masked)
         if not (k.tag in ("pPr", "rPr", "tblPr", "trPr", "tcPr") and not c[1] and not c[3]):  # now empty
             merge(out[3], c)
     return out
@@ -308,14 +323,21 @@ def merge(kids, c):
         kids.append(c)
 
 
-def signature(sec):
-    data = json.dumps([canon(k, sec["doc"]) for k in [sec["head"]] + sec["body"]])
+def signature(sec, inc):
+    """The hash of a section's canonical form, leaving out the incidental bookmark markers `inc`."""
+    data = json.dumps([canon(k, sec["doc"], inc) for k in [sec["head"]] + sec["body"]])
     return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
 
-def fixed_node(n, incidental):
-    """An object, field, control, section break, note reference, bookmark or page/column break."""
-    return (n.tag in FIXED or (n.tag in ("bookmarkStart", "bookmarkEnd") and n.wattr("id") not in incidental)
+def signatures(doc):
+    """Section id -> signature, judged by the document's own incidental bookmarks."""
+    return {s["id"]: signature(s, doc.incidental) for s in doc.sections}
+
+
+def fixed_node(n, inc):
+    """An object, field, control, section break, note reference, bookmark marker (except the incidental
+    markers `inc`) or page/column break."""
+    return (n.tag in FIXED or (n.tag in ("bookmarkStart", "bookmarkEnd") and (n.tag, n.wattr("id")) not in inc)
             or (n.tag == "br" and n.wattr("type") in ("page", "column")))
 
 
@@ -333,20 +355,20 @@ def is_fixed(k, incidental=()):
     return style is not None and "caption" in (style.wattr("val") or "").lower()
 
 
-def inventory(doc, filled=()):
-    """The fixed objects of the whole body as a sorted list (a multiset). Cover cells filled through
-    --fields (indexes among all w:tc) count by their formatting only."""
+def inventory(doc, inc, filled=()):
+    """The fixed objects of the whole body as a sorted list (a multiset), leaving out the incidental bookmark
+    markers `inc`. Cover cells filled through --fields (indexes among all w:tc) count by their formatting only."""
     tcs = [n for n in doc.body.iter() if n.tag == "tc"]
     masked, out = {id(tcs[i]) for i in filled}, []
     for n in doc.body.iter():
-        if n.tag == "bookmarkStart" and n.wattr("id") not in doc.incidental:
+        if n.tag == "bookmarkStart" and (n.tag, n.wattr("id")) not in inc:
             out.append(f"bookmark {n.wattr('name')}")
         elif n.tag in ("instrText", "fldSimple"):
             out.append("field " + (n.wattr("instr") or "".join(n.text)))
         elif n.tag in ("drawing", "pict", "object"):
             out.append("object")
         elif n.tag == "tbl" and is_fixed(n):
-            out.append("table " + json.dumps(canon(n, doc, masked)))
+            out.append("table " + json.dumps(canon(n, doc, inc, masked)))
         elif n.tag in ("sdt", "sectPr", "footnoteReference", "endnoteReference"):
             out.append(f"{n.tag} {n.wattr('id') or ''}")
         elif n.tag == "br" and n.wattr("type") in ("page", "column"):
@@ -354,10 +376,10 @@ def inventory(doc, filled=()):
     return sorted(out)
 
 
-def flags(sec):
+def flags(sec, inc):
     tags = {n.tag for k in [sec["head"]] + sec["body"] for n in k.iter()}
     return {"has_comments": bool(tags & COMMENT), "has_tracked_changes": bool(tags & TRACKED),
-            "fixed_objects": sum(is_fixed(k, sec["doc"].incidental) for k in sec["body"])}
+            "fixed_objects": sum(is_fixed(k, inc) for k in sec["body"])}
 
 
 def section_comment_ids(sec):
@@ -387,7 +409,7 @@ def find_record(docx, folder=None):
     section signatures they match. Names a source only if exactly one record matches most sections, at
     least one, with identical section ids. Only reads."""
     folder = Path(folder) if folder else Path(docx).parent
-    sigs, candidates = {s["id"]: signature(s) for s in Doc(docx).sections}, []
+    sigs, candidates = signatures(Doc(docx)), []
     for p in sorted(folder.glob("*.sections.json")):
         try:
             secs = read_record(p)["sections"]
@@ -401,7 +423,7 @@ def find_record(docx, folder=None):
     unique = (best["matching"] > 0 and best["same_ids"]
               and (len(candidates) < 2 or candidates[1]["matching"] < best["matching"]))
     return {"docx": str(docx), "folder": str(folder), "candidates": candidates,
-            "source": best["record"] if unique else None, "ambiguous": bool(candidates) and not unique}
+            "source": best["record"] if unique else None, "ambiguous": not unique}
 
 
 def read_text(path):
@@ -541,16 +563,18 @@ class Gen:
             f"<{w}:p>{self.runs(r[c] if c < len(r) else '')}</{w}:p></{w}:tc>" for c in range(n))
             + f"</{w}:tr>" for r in rows)
         return (f"<{w}:tbl><{w}:tblPr>{tstyle}<{w}:tblW {w}:w=\"0\" {w}:type=\"auto\"/>"
+                f'<{w}:tblLook {w}:val="04A0" {w}:firstRow="1" {w}:lastRow="0" {w}:firstColumn="1" '
+                f'{w}:lastColumn="0" {w}:noHBand="0" {w}:noVBand="1"/>'
                 f'<{w}:tblDescription {w}:val="{AI_TAG}"/></{w}:tblPr>'
                 f"<{w}:tblGrid>{grid}</{w}:tblGrid>{trs}</{w}:tbl>")
 
 
-def render(doc, sec, items):
+def render(doc, sec, items, inc):
     """New XML for a section body; fixed content is placed at {{keep:N}} or appended. Prose takes the
     style of the section's first plain paragraph that is not a list."""
     gen = Gen(doc)
-    fixed = [k for k in sec["body"] if is_fixed(k, doc.incidental)]
-    styles = [k.find("pPr", "pStyle") for k in sec["body"] if not is_fixed(k, doc.incidental) and k.tag == "p"]
+    fixed = [k for k in sec["body"] if is_fixed(k, inc)]
+    styles = [k.find("pPr", "pStyle") for k in sec["body"] if not is_fixed(k, inc) and k.tag == "p"]
     styles = [s.wattr("val") if s is not None else doc.default_style for s in styles]
     body_style = next((s for s in styles if s not in doc.list_styles), doc.default_style)
     bullet_style = doc.style_id.get("List Bullet")
@@ -584,7 +608,7 @@ def splice(xml, edits):
     return xml
 
 
-def fill_fields(doc, xml, fields):
+def fill_fields(doc, xml, fields, inc):
     """Set the cell right of a matching label cell on the cover (before the first heading), keeping
     the first paragraph's pPr and first run's rPr. A cell with comments, tracked changes, fixed
     objects, bookmarks, hyperlinks or nested tables is protected and left alone.
@@ -598,8 +622,8 @@ def fill_fields(doc, xml, fields):
             key, paras = norm(label.plain()), [k for k in value.kids if k.tag == "p"]
             if key not in want or key in done or not paras:
                 continue
-            if any(fixed_node(n, doc.incidental) or n.tag in COMMENT | TRACKED | {"hyperlink", "tbl"}
-                   for n in value.iter()) or any(is_fixed(p, doc.incidental) for p in paras):
+            if any(fixed_node(n, inc) or n.tag in COMMENT | TRACKED | {"hyperlink", "tbl"}
+                   for n in value.iter()) or any(is_fixed(p, inc) for p in paras):
                 protected.add(key)
                 continue
             ppr, run = paras[0].find("pPr"), paras[0].find("r")
@@ -616,14 +640,17 @@ def fill_fields(doc, xml, fields):
 
 
 def verify(base, new, written, filled):
-    """The preservation check: refuse unless everything this build did not write is unchanged."""
+    """The preservation check: refuse unless everything this build did not write is unchanged. Both are judged
+    by one set of incidental bookmark markers, the union of theirs, so a marker made noise by this build (an
+    end whose start was rewritten, a bookmark whose only link was rewritten) is noise in both."""
+    inc = base.incidental | new.incidental
     if [s["id"] for s in new.sections] != [s["id"] for s in base.sections]:
         raise Refuse("headings changed during the build; nothing written")
     changed = [a["id"] for a, b in zip(base.sections, new.sections)
-               if a["id"] not in written and signature(a) != signature(b)]
+               if a["id"] not in written and signature(a, inc) != signature(b, inc)]
     if changed:
         raise Refuse(f"sections not written in this build changed ({', '.join(changed)}); nothing written")
-    if inventory(base, filled) != inventory(new, filled):
+    if inventory(base, inc, filled) != inventory(new, inc, filled):
         raise Refuse("fixed objects (bookmarks, fields, objects, tables, content controls, breaks or notes) "
                      "changed; nothing written")
 
@@ -650,6 +677,8 @@ def check_mode(doc, base, mode, template, record=None):
         raise Refuse(f"unknown build mode {mode!r}")
     if record and mode != "normal":
         raise Refuse("--record is only for a normal round")
+    if record and beside:
+        raise Refuse(f"--record refused: {sidecar_path(base).name} already exists; use the base's own record")
     if doc.macro:
         raise Refuse("macro-enabled Word files (.docm, .dotm) are not supported")
     if doc.template and mode != "first":
@@ -675,6 +704,20 @@ def check_mode(doc, base, mode, template, record=None):
                      "first draft that never had an assistant version, use --existing --template")
 
 
+def check_fields(doc, tpl, baseline):
+    """Only recognise cover fields when the first heading agrees with the available reference(s)."""
+    if not doc.sections:
+        raise Refuse("--fields refused: the document has no recognised headings, so its cover cannot be told "
+                     "from its body")
+    expected = [(tpl.sections[0]["id"] if tpl and tpl.sections else None, "the template's first section is"),
+                (next(iter(baseline), None), "the assistant record starts with")]
+    for first, source in expected:
+        if first and doc.sections[0]["id"] != first:
+            raise Refuse(f"--fields refused: the first recognised heading is {doc.sections[0]['id']!r} but "
+                         f"{source} {first!r}, so tables before it may not be the cover; give the earlier "
+                         "headings their Heading style in Word")
+
+
 def build(base, content, out, mode="normal", template=None, fields=None, protect=(), record=None):
     out = Path(out)
     side, proposals = sidecar_path(out), out.with_suffix(".proposals.md")
@@ -684,6 +727,7 @@ def build(base, content, out, mode="normal", template=None, fields=None, protect
     if fields is not None and not isinstance(fields, dict):
         raise Refuse("--fields must be a JSON object of cover label: value")
     doc = Doc(base)
+    inc = doc.incidental
     check_mode(doc, base, mode, template, record)
     # A renamed copy (Save As) is compared with its source version's record, never with a fresh one.
     baseline = read_record(record or sidecar_path(base))["sections"] if mode == "normal" else {}
@@ -697,27 +741,19 @@ def build(base, content, out, mode="normal", template=None, fields=None, protect
     missing_sections = [s["id"] for s in tpl.sections if s["id"] not in by_id] if tpl else None
     if missing_sections is None:
         warnings.append("missing template sections were not checked: no --template was given")
-    if fields and not doc.sections:
-        raise Refuse("--fields refused: the document has no recognised headings, so its cover cannot be told "
-                     "from its body")
-    if fields and tpl and tpl.sections and doc.sections[0]["id"] != tpl.sections[0]["id"]:
-        raise Refuse(f"--fields refused: the first recognised heading is {doc.sections[0]['id']!r}, not the "
-                     f"template's first section {tpl.sections[0]['id']!r}, so tables before it may not be the "
-                     "cover; give the earlier headings their Heading style in Word")
-    if fields and baseline and doc.sections[0]["id"] != next(iter(baseline)):
-        raise Refuse(f"--fields refused: the first recognised heading is {doc.sections[0]['id']!r} but the "
-                     f"assistant record starts with {next(iter(baseline))!r}, so tables before it may not be the "
-                     "cover; give the earlier headings their Heading style in Word")
-    base_sig = {sid: signature(sec) for sid, sec in by_id.items()}
+    if fields:
+        check_fields(doc, tpl, baseline)
+    base_sig = signatures(doc)
     edits, written, frozen, unmatched = [], [], {}, []
     for sid, item in wanted.items():
         sec = by_id.get(sid)
         if sec is None:
             unmatched.append(sid)
             continue
-        f, b = flags(sec), baseline.get(sid, {})
+        f, b = flags(sec, inc), baseline.get(sid, {})
         # A missing template heading typed as plain text: rewriting would delete the text under it.
-        lost = sorted(set(missing_sections or ()) & {slug(k.plain()) for k in sec["body"] if k.tag == "p"})
+        headings = [slug(k.plain()) for k in sec["body"] if k.tag == "p" and len(k.plain().split()) <= 10]
+        lost = [sid for sid in missing_sections or () if any(h == sid or h.startswith(sid + "-") for h in headings)]
         if f["has_comments"] or f["has_tracked_changes"]:
             frozen[sid] = "has comments or tracked changes"
         elif sid in protect:
@@ -731,23 +767,20 @@ def build(base, content, out, mode="normal", template=None, fields=None, protect
             frozen[sid] = "edited since the assistant wrote it"
         else:
             start, end = (sec["body"][0].start, sec["body"][-1].end) if sec["body"] else (sec["head"].end,) * 2
-            edits.append((start, end, render(doc, sec, item["blocks"]).encode("utf-8")))
+            edits.append((start, end, render(doc, sec, item["blocks"], inc).encode("utf-8")))
             written.append(sid)
     xml = splice(doc.xml, edits)
     filled, missing_fields, protected_fields = [], [], []
     if fields:
-        xml, filled, missing_fields, protected_fields = fill_fields(doc, xml, fields)
+        xml, filled, missing_fields, protected_fields = fill_fields(doc, xml, fields, inc)
     write_docx(doc, xml, out, written, filled)
-    new = Doc(out)
     sections = {}
-    for sec in new.sections:
-        sid = sec["id"]
+    for sid, sig in signatures(Doc(out)).items():
         old = baseline.get(sid, {})
         # Stays assistant-owned only if nobody changed it since the assistant wrote it.
         untouched_ai = (old.get("owner") == "ai" and sid not in frozen and sid not in written
                         and sid not in protect and old.get("signature") == base_sig.get(sid))
-        sections[sid] = {"owner": "ai" if sid in written or untouched_ai else "other",
-                         "signature": signature(sec),
+        sections[sid] = {"owner": "ai" if sid in written or untouched_ai else "other", "signature": sig,
                          "ids": wanted[sid]["ids"] if sid in written else old.get("ids", [])}
     write_text_file(side, json.dumps(
         {"base": Path(base).name, "docx_sha256": file_sha256(out), "sections": sections}, indent=1))
@@ -762,7 +795,7 @@ def build(base, content, out, mode="normal", template=None, fields=None, protect
             "missing_sections": missing_sections, "missing_fields": missing_fields,
             "protected_fields": protected_fields, "proposals": str(proposals) if frozen or unmatched else None,
             "warnings": warnings,
-            "complete": missing_sections == [] and not (unmatched or frozen or missing_fields or protected_fields),
+            "complete": missing_sections == [] and not (warnings or unmatched or frozen or missing_fields or protected_fields),
             "sha256": file_sha256(out)}
 
 
@@ -770,15 +803,17 @@ def build(base, content, out, mode="normal", template=None, fields=None, protect
 
 def inspect(path):
     doc = Doc(path)
+    inc = doc.incidental
     baseline = load_sidecar(path)["sections"]
+    sigs = signatures(doc)
     comments = doc.comments()
     sections = []
     for sec in doc.sections:
         b = baseline.get(sec["id"], {})
         info = {"id": sec["id"], "heading": sec["heading"], "level": sec["level"],
                 "owner": b.get("owner", "unknown"),
-                "changed_since_build": bool(b) and b.get("signature") != signature(sec),
-                **flags(sec)}
+                "changed_since_build": bool(b) and b.get("signature") != sigs[sec["id"]],
+                **flags(sec, inc)}
         sections.append(info)
     where = {cid: s["id"] for s in doc.sections for cid in section_comment_ids(s)}
     return {"file": str(path), "sha256": file_sha256(path), "sections": sections,
@@ -787,12 +822,13 @@ def inspect(path):
 
 def to_markdown(path):
     doc = Doc(path)
+    inc = doc.incidental
     lines = []
     for sec in doc.sections:
         lines += [f"## {sec['id']}", ""]
         fixed_no = 0
         for k in sec["body"]:
-            if is_fixed(k, doc.incidental):
+            if is_fixed(k, inc):
                 fixed_no += 1
                 lines.append(f"{{{{keep:{fixed_no}}}}}")
                 if k.tag == "tbl":  # readable for reviewers; build ignores <!-- --> notes
