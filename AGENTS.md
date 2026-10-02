@@ -2,6 +2,9 @@
 
 Read README.md and the relevant maintained source before changing behaviour. The current design is docs/design.md. Local planning notes and superseded designs are ignored; maintained code, documentation, tests and evaluation cases define the current implementation.
 
+- Maintain `main` as the single working branch unless the user requests another. Keep public documentation linked to the current files, not retired branches or temporary PRs.
+- Preserve the README's problem → approach → technical details structure. Use ASD-STE100 (Simplified Technical English) as the main guide for its prose, with roughly 80% influence rather than a measured compliance target. Prefer clear subjects, concrete verbs and short sentences; retain financial terms and qualifications when accuracy requires them. Tables are exempt from this prose treatment and may keep compact technical descriptions. Do not add a rigid word-count test or claim formal STE compliance. Keep the closing Bankability paragraph brief and exploratory.
+
 - Keep the eight skills and three local tools focused on FP preparation. No general forecasting platform, second spreading engine or agent framework.
 - shared/ and tools/ are canonical. Change skills/*/SKILL.md where needed, then run python3 scripts/package.py to regenerate companion copies. Do not edit generated copies directly.
 - Runtime tools use Python 3.9+ standard library only. Existing test-only readers belong in the pyproject dev group.
