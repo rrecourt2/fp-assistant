@@ -4,9 +4,9 @@ The ZIP contains eight skills and their local Python tools. Local checks and rea
 
 ## Install the preview
 
-Build with `python3 scripts/package.py`, then copy `dist/fp-assistant-0.3.0.zip` to the work laptop. In Copilot Cowork use **Customize → Plugins → Upload plugin**, initially **Only you**. Confirm these skills appear: fp-lead, deal-analyst, deal-updates, annual-report-review, financial-performance-analysis, repayment-and-structure, investment-grill, fp-template-style-reviewer.
+Download `fp-assistant-0.3.0.zip` from the [release page](https://github.com/rrecourt2/fp-assistant/releases/tag/v0.3.0), under **Assets**, and copy it to the work laptop. Choose the plugin ZIP, not GitHub's source-code archive. In Copilot Cowork use **Customize → Plugins → Upload plugin**, initially **Only you**. Confirm these skills appear: fp-lead, deal-analyst, deal-updates, annual-report-review, financial-performance-analysis, repayment-and-structure, investment-grill, fp-template-style-reviewer.
 
-If only individual skill upload is available, extract `fp-assistant-individual-skills-0.3.0.zip` and upload each inner ZIP. Check existing installations first; avoid numbered duplicates. The former `meeting-evidence-review` is now `deal-updates`; retire the older copy when replacing it. Tenant feature availability and policy determine the supported upload route. [Microsoft customization guidance](https://learn.microsoft.com/en-us/microsoft-365/copilot/cowork/cowork-customize).
+If only individual skill upload is available, download `fp-assistant-individual-skills-0.3.0.zip` from the same page, extract it and upload each inner ZIP. Check existing installations first; avoid numbered duplicates. The former `meeting-evidence-review` is now `deal-updates`; retire the older copy when replacing it. Tenant feature availability and policy determine the supported upload route. [Microsoft customization guidance](https://learn.microsoft.com/en-us/microsoft-365/copilot/cowork/cowork-customize).
 
 Ask fp-lead to run the three packaged self-tests (`register.py`, `fp_docx.py`, `fin_table.py`) and return their actual output. They need Python 3.9+. If scripts cannot run, use labelled analysis/proposals and record the limitation; do not claim Word or register updates.
 

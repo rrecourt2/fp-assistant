@@ -45,6 +45,8 @@ The package targets Microsoft Copilot Cowork. The host must provide the model, a
 
 ## Try it
 
+Download `fp-assistant-0.3.0.zip` from the [release page](https://github.com/rrecourt2/fp-assistant/releases/tag/v0.3.0), under **Assets**. Follow the [installation steps](INSTALL.md). Choose the plugin ZIP, not GitHub's source-code archive.
+
 Start with a partially completed FP. Supply the separate blank template, original evidence, a checked financial spreadsheet export and approved writing examples. Ask:
 
 > Improve this financing proposal as a whole. Check the existing analysis. Explain the financial movements and repayment case. Follow the supplied template and writing examples. Save a new Word version and preserve protected content. Identify missing evidence and proposed changes that could not be applied.
