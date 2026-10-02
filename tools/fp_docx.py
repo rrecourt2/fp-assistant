@@ -14,8 +14,9 @@ A section is the body between one heading and the next heading of any level.
 
 Build modes (a section with comments or tracked changes is never rewritten in any mode):
   --first     a new FP from the blank template; BASE must be byte-identical to --template.
-  --existing  an officer's draft without an assistant record; every section named in the draft
-              is rewritten except those listed in --protect.
+  --existing  an officer's draft without an assistant record, checked against --template; every
+              section named in the draft is rewritten except those listed in --protect and those
+              holding a missing template heading as plain text.
   (neither)   a later round; needs BASE.sections.json and rewrites only sections the assistant
               wrote that nobody has changed since.
 """
@@ -503,8 +504,8 @@ def render(doc, sec, items):
     styles = [s.wattr("val") if s is not None else doc.default_style for s in styles]
     body_style = next((s for s in styles if s not in doc.list_styles), doc.default_style)
     bullet_style = doc.style_id.get("List Bullet")
-    keep = lambda k: ("kept" if k.tag == "tbl" else None, doc.xml[k.start:k.end].decode("utf-8"))  # noqa: E731
-    out, used = [], set()  # (table kind or None, xml)
+    keep = lambda k: (k if k.tag == "tbl" else None, doc.xml[k.start:k.end].decode("utf-8"))  # noqa: E731
+    out, used = [], set()  # (kept table node, "generated" or None; xml)
     for kind, value in items:
         if kind == "p":
             out.append((None, gen.p(value, body_style)))
@@ -516,10 +517,12 @@ def render(doc, sec, items):
             out.append(keep(fixed[value - 1]))
             used.add(value)
     out += [keep(k) for n, k in enumerate(fixed, 1) if n not in used]
+    pos = {id(k): i for i, k in enumerate(sec["body"])}
     xml, before = "", None
-    for table, x in out:
-        if table and before and "generated" in (table, before):
-            xml += f"<{doc.w}:p/>"  # Word merges tables that touch
+    for table, x in out:  # Word merges tables that touch; keep them apart unless they touched in the base
+        if table is not None and before is not None and not (
+                isinstance(table, Node) and isinstance(before, Node) and pos[id(table)] == pos[id(before)] + 1):
+            xml += f"<{doc.w}:p/>"
         xml, before = xml + x, table
     return xml
 
@@ -608,9 +611,13 @@ def check_mode(doc, base, mode, template):
         if record:
             raise Refuse(f"{sidecar_path(base).name} exists, so the base is an FP with an assistant record; "
                          "use a normal round")
-    elif mode == "existing" and record:
-        raise Refuse(f"{sidecar_path(base).name} exists; use a normal round instead of --existing")
-    elif mode == "normal" and not record:
+    elif mode == "existing":
+        if record:
+            raise Refuse(f"{sidecar_path(base).name} exists; use a normal round instead of --existing")
+        if not template:
+            raise Refuse("--existing needs --template: the blank FP template is used to check the draft's "
+                         "headings")
+    elif not record:
         raise Refuse(f"no assistant record ({sidecar_path(base).name}) next to the base; use --existing for "
                      "an officer's draft or --first for the blank template")
 
@@ -632,7 +639,17 @@ def build(base, content, out, mode="normal", template=None, fields=None, protect
     if unknown:
         raise Refuse(f"--protect names no section of the document: {', '.join(unknown)}")
     # The writer cannot insert headings, so template sections absent from the base stay absent.
-    missing_sections = [s["id"] for s in Doc(template).sections if s["id"] not in by_id] if template else []
+    tpl = Doc(template) if template else None
+    missing_sections = [s["id"] for s in tpl.sections if s["id"] not in by_id] if tpl else None
+    if missing_sections is None:
+        warnings.append("missing template sections were not checked: no --template was given")
+    if fields and not doc.sections:
+        raise Refuse("--fields refused: the document has no recognised headings, so its cover cannot be told "
+                     "from its body")
+    if fields and tpl and tpl.sections and doc.sections[0]["id"] != tpl.sections[0]["id"]:
+        raise Refuse(f"--fields refused: the first recognised heading is {doc.sections[0]['id']!r}, not the "
+                     f"template's first section {tpl.sections[0]['id']!r}, so tables before it may not be the "
+                     "cover; give the earlier headings their Heading style in Word")
     base_sig = {sid: signature(sec) for sid, sec in by_id.items()}
     edits, written, frozen, unmatched = [], [], {}, []
     for sid, item in wanted.items():
@@ -641,10 +658,15 @@ def build(base, content, out, mode="normal", template=None, fields=None, protect
             unmatched.append(sid)
             continue
         f, b = flags(sec), baseline.get(sid, {})
+        # A missing template heading typed as plain text: rewriting would delete the text under it.
+        lost = sorted(set(missing_sections or ()) & {slug(k.plain()) for k in sec["body"] if k.tag == "p"})
         if f["has_comments"] or f["has_tracked_changes"]:
             frozen[sid] = "has comments or tracked changes"
         elif sid in protect:
             frozen[sid] = "protected at the officer's request"
+        elif lost:
+            frozen[sid] = (f"contains the missing template heading {', '.join(lost)} as plain text; "
+                           "give it a Heading style in Word")
         elif mode == "normal" and b.get("owner") != "ai":
             frozen[sid] = "not written by the assistant in the base version"
         elif mode == "normal" and b.get("signature") != base_sig[sid]:
@@ -665,7 +687,7 @@ def build(base, content, out, mode="normal", template=None, fields=None, protect
         old = baseline.get(sid, {})
         # Stays assistant-owned only if nobody changed it since the assistant wrote it.
         untouched_ai = (old.get("owner") == "ai" and sid not in frozen and sid not in written
-                        and old.get("signature") == base_sig.get(sid))
+                        and sid not in protect and old.get("signature") == base_sig.get(sid))
         sections[sid] = {"owner": "ai" if sid in written or untouched_ai else "other",
                          "signature": signature(sec),
                          "ids": wanted[sid]["ids"] if sid in written else old.get("ids", [])}
@@ -681,7 +703,8 @@ def build(base, content, out, mode="normal", template=None, fields=None, protect
     return {"out": str(out), "written": written, "frozen": frozen, "unmatched": unmatched,
             "missing_sections": missing_sections, "missing_fields": missing_fields,
             "protected_fields": protected_fields, "proposals": str(proposals) if frozen or unmatched else None,
-            "warnings": warnings, "complete": not (missing_sections or unmatched or frozen),
+            "warnings": warnings,
+            "complete": missing_sections == [] and not (unmatched or frozen or missing_fields or protected_fields),
             "sha256": file_sha256(out)}
 
 
@@ -747,7 +770,7 @@ def check(path, template=None):
         problems.append("source tags left in the text")
     if "{{keep:" in text:
         problems.append("unplaced {{keep:N}} markers left in the text")
-    missing = []
+    missing = None  # not checked without a template
     if template:
         tpl = Doc(template)
         ids = [s["id"] for s in doc.sections]

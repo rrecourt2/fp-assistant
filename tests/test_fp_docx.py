@@ -178,17 +178,21 @@ def test_first_build_needs_the_blank_template_itself(tpl, tmp_path):
     assert not any((tmp_path / f"{n}.docx").exists() for n in "abc")
 
 
-def test_existing_refuses_a_record_and_a_normal_round_needs_one(tpl, tmp_path):
+def test_existing_needs_the_template_and_no_record_and_a_normal_round_needs_one(tpl, tmp_path):
     c = write(tmp_path / "c.md", FIRST)
     v1 = tmp_path / "v1.docx"
     fp_docx.build(tpl, c, v1, mode="first", template=tpl)
     with pytest.raises(fp_docx.Refuse, match="normal round"):
-        fp_docx.build(v1, c, tmp_path / "v2.docx", mode="existing")
+        fp_docx.build(v1, c, tmp_path / "v2.docx", mode="existing", template=tpl)
     with pytest.raises(fp_docx.Refuse, match="--existing"):
         fp_docx.build(tpl, c, tmp_path / "v3.docx")
+    draft = tmp_path / "draft.docx"
+    shutil.copy(tpl, draft)
+    with pytest.raises(fp_docx.Refuse, match="--template"):
+        fp_docx.build(draft, c, tmp_path / "v4.docx", mode="existing")
 
 
-def test_existing_draft_rewrites_unprotected_sections_then_normal_rounds_follow_ownership(tmp_path):
+def test_existing_draft_rewrites_unprotected_sections_then_normal_rounds_follow_ownership(tpl, tmp_path):
     draft = tmp_path / "Officer-draft.docx"
     fp_docx.make_template(draft, comment_on="market-risk")
     fp_docx.edit_text(draft, '<w:r><w:t xml:space="preserve">[Summarise the proposal]</w:t></w:r>',
@@ -197,7 +201,8 @@ def test_existing_draft_rewrites_unprotected_sections_then_normal_rounds_follow_
     fp_docx.edit_text(draft, "[State the recommendation]", "Approve, in the officer's words.")
     before = draft.read_bytes()
     v1 = tmp_path / "FP-v01.docx"
-    r = fp_docx.build(draft, write(tmp_path / "c.md", FIRST), v1, mode="existing", protect=["recommendation"])
+    r = fp_docx.build(draft, write(tmp_path / "c.md", FIRST), v1, mode="existing", template=tpl,
+                      protect=["recommendation"])
     assert r["written"] == ["financial-analysis"]
     assert r["frozen"] == {"summary": "has comments or tracked changes",
                            "market-risk": "has comments or tracked changes",
@@ -230,18 +235,26 @@ def test_real_word_save_changes_only_the_edited_section():
     assert [sid for sid in before if before[sid] != after[sid]] == ["recommendation"]
 
 
-def test_round_after_a_real_word_save_writes_untouched_sections_and_keeps_the_officers_text(tmp_path):
-    base = tmp_path / "FP-v01.docx"
+def test_rounds_after_a_real_word_save_write_untouched_sections_and_keep_the_officers_text(tmp_path):
+    base, v2, v3 = (tmp_path / f"FP-v0{n}.docx" for n in (1, 2, 3))
     shutil.copy(WORD / "word-saved-v1.docx", base)
     record = {s["id"]: {"owner": "ai", "signature": fp_docx.signature(s), "ids": []}
               for s in fp_docx.Doc(WORD / "assistant-v1.docx").sections}
     write(tmp_path / "FP-v01.sections.json", json.dumps({"base": "template.docx", "sections": record}))
     r = fp_docx.build(base, write(tmp_path / "c.md", "## summary\nNew summary.\n\n## recommendation\nDecline.\n"),
-                      tmp_path / "FP-v02.docx")
+                      v2, template=WORD / "template.docx", fields={"Amount": "EUR 15m"})
     assert r["written"] == ["summary"]
     assert r["frozen"] == {"recommendation": "edited since the assistant wrote it"}
-    md = fp_docx.to_markdown(tmp_path / "FP-v02.docx")
+    md = fp_docx.to_markdown(v2)
     assert "New summary." in md and "wow" in md and "Decline." not in md
+    assert "EUR 15m" in [c.text for t in docx.Document(v2).tables for row in t.rows for c in row.cells]
+    # The assistant tries the officer's section again in the next round: still frozen, "wow" still there.
+    r = fp_docx.build(v2, write(tmp_path / "c3.md", "## recommendation\nDecline.\n\n## market-risk\nPrices fell.\n"),
+                      v3, template=WORD / "template.docx")
+    assert r["written"] == ["market-risk"]
+    assert r["frozen"] == {"recommendation": "not written by the assistant in the base version"}
+    md = fp_docx.to_markdown(v3)
+    assert "wow" in md and "Prices fell." in md and "Decline." not in md
 
 
 APPROVE = '<w:r><w:t xml:space="preserve">Approve.</w:t></w:r>'
@@ -369,15 +382,21 @@ def test_tables_next_to_a_generated_table_are_kept_apart(tpl, tmp_path):
 
 # ---------- reporting ----------
 
-def test_missing_template_sections_are_reported_and_the_build_is_not_complete(tpl, tmp_path):
-    draft = tmp_path / "draft.docx"
+def test_missing_template_sections_are_reported_and_text_under_them_is_kept(tpl, tmp_path):
+    draft = tmp_path / "draft.docx"   # the officer typed "3. Recommendation" as bold text, not as a heading
     shutil.copy(tpl, draft)
     fp_docx.edit_text(draft, '<w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t xml:space="preserve">3. Recommendation',
-                      '<w:pStyle w:val="Normal"/></w:pPr><w:r><w:t xml:space="preserve">3. Recommendation')
+                      '<w:pStyle w:val="Normal"/></w:pPr><w:r><w:rPr><w:b/></w:rPr>'
+                      '<w:t xml:space="preserve">3. Recommendation')
+    fp_docx.edit_text(draft, "[State the recommendation]", "Approve with two covenants (officer text).")
     out = tmp_path / "v1.docx"
     r = fp_docx.build(draft, write(tmp_path / "c.md", FIRST), out, mode="existing", template=tpl)
     assert r["missing_sections"] == ["recommendation"] and r["unmatched"] == ["recommendation"]
-    assert r["complete"] is False
+    assert "recommendation" in r["frozen"]["market-risk"] and r["complete"] is False
+    md = fp_docx.to_markdown(out)
+    assert "3. Recommendation" in md and "Approve with two covenants (officer text)." in md
+    proposals = (tmp_path / "v1.proposals.md").read_text()
+    assert "Milk prices rose." in proposals and "Approve." in proposals
     assert fp_docx.check(out, tpl)["missing_sections"] == ["recommendation"]
     ok = fp_docx.build(tpl, write(tmp_path / "c2.md", FIRST), tmp_path / "v2.docx", mode="first", template=tpl)
     assert ok["missing_sections"] == [] and ok["unmatched"] == [] and ok["frozen"] == {}
@@ -460,7 +479,7 @@ def test_markdown_shows_comments_in_a_read_only_note(tmp_path):
     fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), v1, mode="first", template=tpl)
     md = fp_docx.to_markdown(v1)
     assert "<!-- comments" in md and "Check the FX exposure" in md
-    r = fp_docx.build(v1, write(tmp_path / "again.md", md), tmp_path / "v2.docx")
+    r = fp_docx.build(v1, write(tmp_path / "again.md", md), tmp_path / "v2.docx", template=tpl)
     assert r["unmatched"] == [] and r["warnings"] == []
     assert "hedging" not in "\n".join(p.text for p in docx.Document(tmp_path / "v2.docx").paragraphs)
 
@@ -488,3 +507,95 @@ def test_dotx_template_builds_a_document_and_macro_files_are_refused(tmp_path):
 def test_edit_text_raises_value_error_when_the_text_is_absent(tpl):
     with pytest.raises(ValueError):
         fp_docx.edit_text(tpl, "not in the document", "x")
+
+
+# ---------- fixes after the Task 2a review ----------
+
+def unstyle_headings(path, *texts):
+    for text in texts:
+        for style in ("Heading1", "Heading2"):
+            try:
+                fp_docx.edit_text(path, f'<w:pStyle w:val="{style}"/></w:pPr><w:r><w:t xml:space="preserve">{text}',
+                                  f'<w:pStyle w:val="Normal"/></w:pPr><w:r><w:t xml:space="preserve">{text}')
+                break
+            except ValueError:
+                continue
+
+
+def test_fields_are_refused_when_the_cover_cannot_be_told_from_the_body(tpl, tmp_path):
+    c = write(tmp_path / "c.md", "## market-risk\nM.\n")
+    flat = tmp_path / "flat.docx"                     # no recognised headings at all
+    shutil.copy(tpl, flat)
+    unstyle_headings(flat, "1. Summary", "2. Financial analysis", "2.1 Market risk", "3. Recommendation")
+    with pytest.raises(fp_docx.Refuse, match="no recognised headings"):
+        fp_docx.build(flat, c, tmp_path / "a.docx", mode="existing", template=tpl, fields={"Amount": "EUR 15m"})
+    late = tmp_path / "late.docx"                     # the first two headings are not recognised
+    shutil.copy(tpl, late)
+    unstyle_headings(late, "1. Summary", "2. Financial analysis")
+    with pytest.raises(fp_docx.Refuse, match="market-risk.*summary"):
+        fp_docx.build(late, c, tmp_path / "b.docx", mode="existing", template=tpl, fields={"EUR m": "x"})
+    assert not (tmp_path / "a.docx").exists() and not (tmp_path / "b.docx").exists()
+    r = fp_docx.build(late, c, tmp_path / "c.docx", mode="existing", template=tpl)   # without --fields it builds
+    assert r["missing_sections"] == ["summary", "financial-analysis"]
+
+
+def test_complete_is_false_unless_everything_was_checked_and_applied(tpl, tmp_path):
+    v1 = tmp_path / "v1.docx"
+    r = fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), v1, mode="first", template=tpl,
+                      fields={"Borrower": "Cedar Foods", "Tenor": "5 years"})
+    assert r["frozen"] == {} and r["unmatched"] == [] and r["missing_sections"] == []
+    assert r["missing_fields"] == ["Tenor"] and r["complete"] is False
+    c2 = write(tmp_path / "c2.md", "## summary\nS.\n")
+    r = fp_docx.build(v1, c2, tmp_path / "v2.docx")
+    assert r["missing_sections"] is None and r["complete"] is False
+    assert any("not checked" in w for w in r["warnings"])
+    assert fp_docx.check(tmp_path / "v2.docx")["missing_sections"] is None
+    r = fp_docx.build(v1, c2, tmp_path / "v3.docx", template=tpl)
+    assert r["missing_sections"] == [] and r["warnings"] == [] and r["complete"] is True
+
+
+def template_table(text):
+    return ('<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/></w:tblPr><w:tblGrid><w:gridCol w:w="9000"/>'
+            f"</w:tblGrid><w:tr><w:tc><w:p><w:r><w:t>{text}</w:t></w:r></w:p></w:tc></w:tr></w:tbl>")
+
+
+def test_kept_tables_never_end_up_touching_unless_they_touched_in_the_base(tpl, tmp_path):
+    fin_end = "<w:t>FY2025 (template)</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"
+    fp_docx.edit_text(tpl, fin_end, fin_end + '<w:p><w:r><w:t>[Comment on the balance sheet]</w:t></w:r></w:p>'
+                      + template_table("Balance sheet (template)"))
+    guidance = '<w:t xml:space="preserve">[Summarise the proposal]</w:t></w:r></w:p>'
+    fp_docx.edit_text(tpl, guidance, guidance + template_table("Fees A") + template_table("Fees B"))
+    out = tmp_path / "v1.docx"
+    fp_docx.build(tpl, write(tmp_path / "c.md", "## summary\nS.\n\n## financial-analysis\nRevenue rose 20%.\n\n"
+                             "The balance sheet is strong.\n"), out, mode="first", template=tpl)
+    with zipfile.ZipFile(out) as z:
+        xml = z.read("word/document.xml").decode()
+    fin = xml[xml.index("2. Financial analysis"):xml.index("2.1 Market risk")]
+    assert "</w:tbl><w:tbl>" not in fin and "</w:tbl><w:p/><w:tbl>" in fin
+    summary = xml[xml.index("1. Summary"):xml.index("2. Financial analysis")]
+    assert "Fees A" in summary and "</w:tbl><w:tbl>" in summary     # they already touched in the template
+
+
+def test_protected_section_belongs_to_the_officer_afterwards(tpl, tmp_path):
+    v1, v2, v3 = (tmp_path / f"v{n}.docx" for n in (1, 2, 3))
+    fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), v1, mode="first", template=tpl)
+    fp_docx.build(v1, write(tmp_path / "c2.md", "## summary\nNew summary.\n"), v2, protect=["market-risk"])
+    side = json.loads((tmp_path / "v2.sections.json").read_text())["sections"]
+    assert side["market-risk"]["owner"] == "other" and side["recommendation"]["owner"] == "ai"
+    r = fp_docx.build(v2, write(tmp_path / "c3.md", "## market-risk\nM.\n"), v3)
+    assert r["frozen"] == {"market-risk": "not written by the assistant in the base version"}
+
+
+def test_cover_field_fill_that_loses_its_formatting_is_refused(tpl, tmp_path, monkeypatch):
+    fp_docx.edit_text(tpl, "<w:r><w:t>[name]</w:t></w:r>", "<w:r><w:rPr><w:b/></w:rPr><w:t>[name]</w:t></w:r>")
+    real = fp_docx.fill_fields
+
+    def lossy(doc, xml, fields):
+        new, *rest = real(doc, xml, fields)
+        return (new.replace(b"<w:rPr><w:b/></w:rPr>", b"", 1), *rest)
+
+    monkeypatch.setattr(fp_docx, "fill_fields", lossy)
+    with pytest.raises(fp_docx.Refuse, match="nothing written"):
+        fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), tmp_path / "v1.docx", mode="first", template=tpl,
+                      fields={"Borrower": "Cedar Foods"})
+    assert not (tmp_path / "v1.docx").exists() and not (tmp_path / "v1.sections.json").exists()
