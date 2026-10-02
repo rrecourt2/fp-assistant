@@ -4,8 +4,10 @@
 
 | Date | Run | Result and limits |
 |---|---|---|
-| 2026-10-01 | Synthetic transcript case, fresh actor and independent grader | Passed in scope; minor wording error retained in [record](transcript-review.md). Exact model was not captured. |
-| 2026-10-02 | Synthetic mixed email/meeting case, fresh actor and author grading | Passed in scope; [record](deal-updates-review.md). No live mailbox or independent grader. Exact model was not captured. |
+| 2026-10-01 | Synthetic transcript case, fresh actor and independent grader | Passed in scope; a minor decision-wording issue was recorded. Exact model was not captured. |
+| 2026-10-02 | Synthetic mixed email/meeting case, fresh actor and author grading | Passed in scope. No live mailbox or independent grader. Exact model was not captured. |
+
+One-off actor and grader transcripts are retained locally rather than tracked in the public source. These historical summaries are not a current model qualification.
 
 ## 0.3.0 implementation
 
@@ -17,7 +19,7 @@ Verified locally on 2 October 2026:
 | Scripts extracted from the built plugin, outside the repository | All 14 packaged script copies passed their self-tests on Python 3.9.6 without third-party libraries |
 | Packaging and manifest | Both ZIPs built; eight skill packages passed `package.py --check`; `claude plugin validate .` passed (not Cowork import) |
 | Reproducible packaging | Same sources produced identical ZIP bytes with fixed archive timestamps |
-| Links and diff | 54 Markdown files checked, no broken relative targets; `git diff --check` clean |
+| Links and diff | After documentation cleanup, 42 tracked Markdown files checked with no missing or untracked relative targets; `git diff --check` clean |
 | Synthetic workflow | Existing partial draft + separate template → located financial table and Word output → register/readiness record → new email and officer edit → protected revision with proposals; original input preserved |
 
 The synthetic Word fixtures were saved in Microsoft Word by the officer: one ordinary draft and one including an assistant-generated financial table. Both comparisons identify only the edited Recommendation section, leaving the other sections updatable. Regression checks cover later-round protection, bookmarks, page breaks and supported formatting edits. The second pair was inspected for synthetic content and external relationships before inclusion. These fixtures do not establish compatibility with the institution's real template or visual layout of a new FP.

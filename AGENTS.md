@@ -1,6 +1,6 @@
 # Working on FP Assistant
 
-Read README.md and the relevant maintained source before changing behaviour. The current design is docs/design.md; docs/archive/ is historical. The implementation plan records intended tasks, while working code and documented limits take precedence over obsolete embedded examples.
+Read README.md and the relevant maintained source before changing behaviour. The current design is docs/design.md. Local planning notes and superseded designs are ignored; maintained code, documentation, tests and evaluation cases define the current implementation.
 
 - Keep the eight skills and three local tools focused on FP preparation. No general forecasting platform, second spreading engine or agent framework.
 - shared/ and tools/ are canonical. Change skills/*/SKILL.md where needed, then run python3 scripts/package.py to regenerate companion copies. Do not edit generated copies directly.

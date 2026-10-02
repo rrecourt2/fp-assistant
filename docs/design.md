@@ -1,6 +1,6 @@
 # FP Assistant — current design
 
-Version 0.3.0. Local implementation; work-tenant acceptance and full-FP evaluation remain outstanding. [Earlier designs and research](archive/README.md) are historical. The [implementation plan](superpowers/plans/2026-10-02-tools-and-cleanup.md) records the work sequence; maintained scripts and this design describe current behaviour.
+Version 0.3.0. Local implementation; work-tenant acceptance and full-FP evaluation remain outstanding. Maintained scripts and this design describe current behaviour. Superseded designs and local implementation notes are not part of the distributed source.
 
 ## Purpose and writing
 

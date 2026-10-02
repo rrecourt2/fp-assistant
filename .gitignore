@@ -9,3 +9,19 @@ __pycache__/
 /deal-data/
 /outputs/
 /dist/
+
+# Local agent work, superseded designs and one-off evaluation transcripts
+/.superpowers/
+/docs/superpowers/
+/docs/archive/
+/evaluations/*-actor-output.md
+/evaluations/*-grader-output.md
+/evaluations/*-review.md
+
+# Development caches and generated test reports
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/

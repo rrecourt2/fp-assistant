@@ -12,7 +12,7 @@ Use [scenarios.md](scenarios.md), [transcript-case.md](transcript-case.md) and [
 
 1. Give a fresh actor the raw task/evidence and the applicable packaged skills. For the routing case, supply all eight descriptions without telling it which skill to choose; reveal selected skill bodies only after selection.
 2. Record model/version/effort, skill/package version, source versions, tools available, saved outputs and actual limitations. Distinguish a hypothetical no-runtime scenario from a test that actually executes the shipped tools.
-3. Have a fresh reviewer assess the output against the hidden criteria. Preserve the actor output and verdict; record critical failures even when the prose is good.
+3. Have a fresh reviewer assess the output against the hidden criteria. Preserve raw actor output and verdicts in the authorised local evaluation folder; one-off run transcripts are not tracked in the public repository. Record critical failures even when the prose is good.
 4. Add a result to results.md. Fix observed failures and rerun the affected case, retaining earlier failed evidence.
 
 Qualify the intended Cowork model on scenarios 1, 2, 3 and 5 plus the deal-updates case. Test another model before switching to it. Rerun affected scenarios after local changes; there is no blanket two-model/all-cases requirement for every edit.
