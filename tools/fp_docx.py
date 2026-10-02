@@ -6,9 +6,17 @@ never re-serialised, and every other file inside the .docx is copied unchanged.
 A section is the body between one heading and the next heading of any level.
 
   fp_docx.py inspect DOCX [--markdown]
-  fp_docx.py build --base BASE.docx --content CONTENT.md --out OUT.docx [--first] [--fields FIELDS.json]
+  fp_docx.py build --base BASE.docx --content CONTENT.md --out OUT.docx [--first | --existing]
+                   [--template BLANK.docx] [--fields FIELDS.json] [--protect ID,ID]
   fp_docx.py check DOCX [--template TEMPLATE.docx]
   fp_docx.py selftest
+
+Build modes (a section with comments or tracked changes is never rewritten in any mode):
+  --first     a new FP from the blank template; BASE must be byte-identical to --template.
+  --existing  an officer's draft without an assistant record; every section named in the draft
+              is rewritten except those listed in --protect.
+  (neither)   a later round; needs BASE.sections.json and rewrites only sections the assistant
+              wrote that nobody has changed since.
 """
 import argparse
 import hashlib
@@ -461,14 +469,39 @@ def write_docx(doc, xml, out):
             os.remove(tmp)
 
 
-def build(base, content, out, first=False, fields=None):
+def check_mode(doc, base, mode, template):
+    """Refuse a build mode that does not fit the base (see the module docstring)."""
+    record = sidecar_path(base).exists()
+    if mode not in ("first", "existing", "normal"):
+        raise Refuse(f"unknown build mode {mode!r}")
+    if mode == "first":
+        if not template:
+            raise Refuse("--first needs --template: the configured blank FP template")
+        if file_sha256(base) != file_sha256(template):
+            raise Refuse("--first builds only from the blank template: the base is not identical to it; "
+                         "for an officer's draft use --existing")
+        if record:
+            raise Refuse(f"{sidecar_path(base).name} exists, so the base is an FP with an assistant record; "
+                         "use a normal round")
+    elif mode == "existing" and record:
+        raise Refuse(f"{sidecar_path(base).name} exists; use a normal round instead of --existing")
+    elif mode == "normal" and not record:
+        raise Refuse(f"no assistant record ({sidecar_path(base).name}) next to the base; use --existing for "
+                     "an officer's draft or --first for the blank template")
+
+
+def build(base, content, out, mode="normal", template=None, fields=None, protect=()):
     out = Path(out)
     if out.exists():
         raise Refuse(f"{out.name} already exists; choose a new version name")
     doc = Doc(base)
-    baseline = {} if first else load_sidecar(base)["sections"]
+    check_mode(doc, base, mode, template)
+    baseline = load_sidecar(base)["sections"] if mode == "normal" else {}
     wanted = parse_content(Path(content).read_text(encoding="utf-8"))
     by_id = {s["id"]: s for s in doc.sections}
+    unknown = sorted(set(protect) - set(by_id))
+    if unknown:
+        raise Refuse(f"--protect names no section of the document: {', '.join(unknown)}")
     base_sig = {sid: signature(sec) for sid, sec in by_id.items()}
     edits, written, frozen, unmatched = [], [], {}, []
     for sid, item in wanted.items():
@@ -476,29 +509,22 @@ def build(base, content, out, first=False, fields=None):
         if sec is None:
             unmatched.append(sid)
             continue
-        f = flags(sec)
+        f, b = flags(sec), baseline.get(sid, {})
         if f["has_comments"] or f["has_tracked_changes"]:
             frozen[sid] = "has comments or tracked changes"
-            continue
-        if not first:
-            b = baseline.get(sid, {})
-            if b.get("owner") != "ai":
-                frozen[sid] = "not written by the assistant in the base version"
-                continue
-            if b.get("signature") != signature(sec):
-                frozen[sid] = "edited since the assistant wrote it"
-                continue
-        if sec["body"]:
-            start, end = sec["body"][0].start, sec["body"][-1].end
+        elif sid in protect:
+            frozen[sid] = "protected at the officer's request"
+        elif mode == "normal" and b.get("owner") != "ai":
+            frozen[sid] = "not written by the assistant in the base version"
+        elif mode == "normal" and b.get("signature") != base_sig[sid]:
+            frozen[sid] = "edited since the assistant wrote it"
         else:
-            start = end = sec["head"].end
-        edits.append((start, end, render(doc, sec, item["blocks"]).encode("utf-8")))
-        written.append(sid)
+            start, end = (sec["body"][0].start, sec["body"][-1].end) if sec["body"] else (sec["head"].end,) * 2
+            edits.append((start, end, render(doc, sec, item["blocks"]).encode("utf-8")))
+            written.append(sid)
     xml = splice(doc.xml, edits)
     missing_fields = []
     if fields:
-        if not first:
-            raise Refuse("--fields is only allowed with --first; later rounds keep the officer's cover page")
         xml, missing_fields = fill_fields(doc, xml, fields)
     write_docx(doc, xml, out)
     new = Doc(out)
@@ -507,7 +533,7 @@ def build(base, content, out, first=False, fields=None):
         sid = sec["id"]
         old = baseline.get(sid, {})
         # Stays assistant-owned only if nobody changed it since the assistant wrote it.
-        untouched_ai = (not first and old.get("owner") == "ai" and sid not in frozen and sid not in written
+        untouched_ai = (old.get("owner") == "ai" and sid not in frozen and sid not in written
                         and old.get("signature") == base_sig.get(sid))
         sections[sid] = {"owner": "ai" if sid in written or untouched_ai else "other",
                          "signature": signature(sec),
@@ -686,7 +712,7 @@ def selftest():
             "## summary\nCedar Foods seeks EUR 12m. [S-001 p.2]\n\n## financial-analysis\n"
             "Revenue rose 20% on a restated basis. [S-002 p.20]\n\n{{keep:1}}\n\n## market-risk\n"
             "- Milk prices rose. [S-003]\n\n## recommendation\nApprove, subject to conditions.\n", encoding="utf-8")
-        r1 = build(d / "template.docx", d / "v1.md", d / "FP-v01.docx", first=True,
+        r1 = build(d / "template.docx", d / "v1.md", d / "FP-v01.docx", mode="first", template=d / "template.docx",
                    fields={"Borrower": "Cedar Foods", "Amount": "EUR 12m"})
         assert r1["written"] == ["summary", "financial-analysis", "market-risk", "recommendation"], r1
         assert not check(d / "FP-v01.docx", d / "template.docx")["problems"]
@@ -710,8 +736,12 @@ def main(argv=None):
     b.add_argument("--base", required=True)
     b.add_argument("--content", required=True)
     b.add_argument("--out", required=True)
-    b.add_argument("--first", action="store_true")
+    m = b.add_mutually_exclusive_group()
+    m.add_argument("--first", action="store_true")
+    m.add_argument("--existing", action="store_true")
+    b.add_argument("--template")
     b.add_argument("--fields")
+    b.add_argument("--protect", default="", help="comma-separated section ids to keep as they are")
     c = sub.add_parser("check")
     c.add_argument("docx")
     c.add_argument("--template")
@@ -722,7 +752,9 @@ def main(argv=None):
             print(to_markdown(args.docx) if args.markdown else json.dumps(inspect(args.docx), indent=1))
         elif args.cmd == "build":
             fields = json.loads(Path(args.fields).read_text(encoding="utf-8")) if args.fields else None
-            print(json.dumps(build(args.base, args.content, args.out, args.first, fields), indent=1))
+            mode = "first" if args.first else "existing" if args.existing else "normal"
+            protect = [s.strip() for s in args.protect.split(",") if s.strip()]
+            print(json.dumps(build(args.base, args.content, args.out, mode, args.template, fields, protect), indent=1))
         elif args.cmd == "check":
             result = check(args.docx, args.template)
             print(json.dumps(result, indent=1))
