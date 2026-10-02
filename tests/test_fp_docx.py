@@ -382,3 +382,109 @@ def test_missing_template_sections_are_reported_and_the_build_is_not_complete(tp
     ok = fp_docx.build(tpl, write(tmp_path / "c2.md", FIRST), tmp_path / "v2.docx", mode="first", template=tpl)
     assert ok["missing_sections"] == [] and ok["unmatched"] == [] and ok["frozen"] == {}
     assert ok["complete"] is True
+
+
+# ---------- robustness ----------
+
+def test_draft_with_a_byte_order_mark_builds(tpl, tmp_path):
+    c = tmp_path / "c.md"
+    c.write_bytes(b"\xef\xbb\xbf" + FIRST.encode("utf-8"))
+    r = fp_docx.build(tpl, c, tmp_path / "v1.docx", mode="first", template=tpl)
+    assert r["written"] == ["summary", "financial-analysis", "market-risk", "recommendation"]
+    assert r["warnings"] == []
+
+
+def test_duplicate_draft_sections_are_refused_and_stray_text_is_reported(tpl, tmp_path):
+    with pytest.raises(fp_docx.Refuse, match="summary"):
+        fp_docx.build(tpl, write(tmp_path / "c.md", "## summary\nA.\n\n## Summary\nB.\n"), tmp_path / "v1.docx",
+                      mode="first", template=tpl)
+    assert not (tmp_path / "v1.docx").exists()
+    r = fp_docx.build(tpl, write(tmp_path / "c2.md", "Draft for Cedar Foods\n\n## summary\nA.\n"), tmp_path / "v2.docx",
+                      mode="first", template=tpl)
+    assert r["written"] == ["summary"] and "Draft for Cedar Foods" in r["warnings"][0]
+
+
+def test_cli_refuses_bad_input_with_exit_3_and_no_traceback(tpl, tmp_path, capsys):
+    c = write(tmp_path / "c.md", FIRST)
+    first = ["build", "--base", str(tpl), "--first", "--template", str(tpl)]
+    (tmp_path / "bad.json").write_bytes(b'{"Borrower": ')
+    (tmp_path / "list.json").write_bytes(b'["Borrower"]')
+    (tmp_path / "latin1.md").write_bytes("## summary\nCaf\xe9 au lait.\n".encode("latin-1"))
+    assert fp_docx.main(first + ["--content", str(c), "--out", str(tmp_path / "a.docx"),
+                                 "--fields", str(tmp_path / "bad.json")]) == 3
+    assert fp_docx.main(first + ["--content", str(c), "--out", str(tmp_path / "b.docx"),
+                                 "--fields", str(tmp_path / "list.json")]) == 3
+    assert fp_docx.main(first + ["--content", str(tmp_path / "latin1.md"), "--out", str(tmp_path / "c.docx")]) == 3
+    assert fp_docx.main(first + ["--content", str(c), "--out", str(tmp_path / "v1.docx")]) == 0
+    write(tmp_path / "v1.sections.json", "{not json")
+    assert fp_docx.main(["build", "--base", str(tmp_path / "v1.docx"), "--content", str(c),
+                         "--out", str(tmp_path / "v2.docx")]) == 3
+    err = capsys.readouterr().err
+    assert err.count("REFUSED: ") == 4 and "Traceback" not in err
+    assert not any((tmp_path / f"{n}.docx").exists() for n in ("a", "b", "c", "v2"))
+
+
+def test_outputs_are_never_overwritten_and_are_readable_by_others(tpl, tmp_path):
+    c = write(tmp_path / "c.md", FIRST + "\n## annex-9\nText\n")
+    write(tmp_path / "v1.sections.json", "{}")
+    with pytest.raises(fp_docx.Refuse, match="v1.sections.json"):
+        fp_docx.build(tpl, c, tmp_path / "v1.docx", mode="first", template=tpl)
+    write(tmp_path / "v2.proposals.md", "officer notes")
+    with pytest.raises(fp_docx.Refuse, match="v2.proposals.md"):
+        fp_docx.build(tpl, c, tmp_path / "v2.docx", mode="first", template=tpl)
+    assert (tmp_path / "v1.sections.json").read_text() == "{}"
+    assert (tmp_path / "v2.proposals.md").read_text() == "officer notes"
+    assert not (tmp_path / "v1.docx").exists() and not (tmp_path / "v2.docx").exists()
+    fp_docx.build(tpl, c, tmp_path / "v3.docx", mode="first", template=tpl)
+    for name in ("v3.docx", "v3.sections.json", "v3.proposals.md"):
+        assert (tmp_path / name).stat().st_mode & 0o777 == 0o644, name
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_tabs_and_line_breaks_are_text_and_numbered_headings_keep_their_id(tpl):
+    fp_docx.edit_text(tpl, '<w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t xml:space="preserve">1. Summary</w:t>',
+                      '<w:pStyle w:val="Heading1"/><w:tabs><w:tab w:val="left" w:pos="720"/></w:tabs></w:pPr>'
+                      "<w:r><w:t>1.</w:t><w:tab/><w:t>Summary</w:t>")
+    fp_docx.edit_text(tpl, '<w:t xml:space="preserve">[Explain the figures]</w:t>',
+                      '<w:t>Line one</w:t><w:br/><w:t>Line</w:t><w:tab/><w:t>two</w:t><w:br w:type="page"/>')
+    doc = fp_docx.Doc(tpl)
+    assert doc.sections[0]["id"] == "summary" and doc.sections[0]["heading"] == "1.\tSummary"
+    assert doc.sections[1]["body"][0].plain() == "Line one\nLine\ttwo"
+
+
+def test_markdown_shows_comments_in_a_read_only_note(tmp_path):
+    tpl = tmp_path / "template.docx"
+    fp_docx.make_template(tpl, comment_on="market-risk")
+    edit_part(tpl, "word/comments.xml", "Check the FX exposure", "Check the FX exposure --> and hedging")
+    v1 = tmp_path / "v1.docx"
+    fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), v1, mode="first", template=tpl)
+    md = fp_docx.to_markdown(v1)
+    assert "<!-- comments" in md and "Check the FX exposure" in md
+    r = fp_docx.build(v1, write(tmp_path / "again.md", md), tmp_path / "v2.docx")
+    assert r["unmatched"] == [] and r["warnings"] == []
+    assert "hedging" not in "\n".join(p.text for p in docx.Document(tmp_path / "v2.docx").paragraphs)
+
+
+def test_dotx_template_builds_a_document_and_macro_files_are_refused(tmp_path):
+    dotx = tmp_path / "template.dotx"
+    fp_docx.make_template(dotx)
+    edit_part(dotx, "[Content_Types].xml", "wordprocessingml.document.main+xml", "wordprocessingml.template.main+xml")
+    out = tmp_path / "v1.docx"
+    fp_docx.build(dotx, write(tmp_path / "c.md", FIRST), out, mode="first", template=dotx)
+    with zipfile.ZipFile(out) as z:
+        types = z.read("[Content_Types].xml").decode()
+    assert "wordprocessingml.document.main+xml" in types and "template.main" not in types
+    assert docx.Document(out).paragraphs                     # python-docx refuses a template content type
+    with pytest.raises(fp_docx.Refuse, match="--first"):
+        fp_docx.build(dotx, tmp_path / "c.md", tmp_path / "v2.docx", mode="existing")
+    docm = tmp_path / "draft.docm"
+    fp_docx.make_template(docm)
+    edit_part(docm, "[Content_Types].xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "application/vnd.ms-word.document.macroEnabled")
+    with pytest.raises(fp_docx.Refuse, match="macro"):
+        fp_docx.build(docm, tmp_path / "c.md", tmp_path / "v3.docx", mode="existing")
+
+
+def test_edit_text_raises_value_error_when_the_text_is_absent(tpl):
+    with pytest.raises(ValueError):
+        fp_docx.edit_text(tpl, "not in the document", "x")

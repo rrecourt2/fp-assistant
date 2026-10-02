@@ -2,7 +2,8 @@
 """Read, build and check FP Word files with the Python standard library only.
 
 document.xml is changed by splicing byte ranges; XML this tool did not generate is
-never re-serialised, and every other file inside the .docx is copied unchanged.
+never re-serialised, and every other file inside the .docx is copied unchanged (only a
+.dotx template's main content type becomes a document's). Macro-enabled files are refused.
 A section is the body between one heading and the next heading of any level.
 
   fp_docx.py inspect DOCX [--markdown]
@@ -45,6 +46,7 @@ FIXED = {"drawing", "pict", "object", "fldChar", "fldSimple", "instrText", "sect
          "AlternateContent", "oMath", "footnoteReference", "endnoteReference"}
 NOISE = {"proofErr", "lastRenderedPageBreak"}
 LAYOUT = {"tblPr", "tblGrid", "trPr", "tcPr", "tblPrEx"}  # table layout Word rewrites when it saves
+TEMPLATE_MAIN, DOCUMENT_MAIN = b"wordprocessingml.template.main+xml", b"wordprocessingml.document.main+xml"
 
 
 class Refuse(Exception):
@@ -100,9 +102,14 @@ class Node:
         return False
 
     def plain(self):
-        """Text as if tracked changes were accepted."""
-        return "".join("".join(n.text) for n in self.iter()
-                       if n.uri == W and n.tag == "t" and not n.deleted())
+        """Text as if tracked changes were accepted, with tabs and line breaks."""
+        out = []
+        for n in self.iter():
+            s = ("".join(n.text) if n.tag == "t" else "\t" if n.tag == "tab" and n.parent.tag == "r"
+                 else "\n" if n.tag == "br" and n.wattr("type") not in ("page", "column") else "")
+            if s and n.uri == W and not n.deleted():
+                out.append(s)
+        return "".join(out)
 
 
 def scan(buf):
@@ -180,6 +187,8 @@ class Doc:
             self.infos = z.infolist()
             self.parts = {i.filename: z.read(i.filename) for i in self.infos}
         self.xml = self.parts["word/document.xml"]
+        types = self.parts.get("[Content_Types].xml", b"")
+        self.template, self.macro = TEMPLATE_MAIN in types, b"macroEnabled" in types
         self.root = scan(self.xml)
         head = self.xml[self.root.start:tag_end(self.xml, self.root.start)]
         m = re.search(rb'xmlns:(\w+)="' + re.escape(W.encode()) + b'"', head)
@@ -250,9 +259,10 @@ def canon(n, doc, masked=()):
     out = [n.tag if n.uri == W else f"{n.uri} {n.tag}", attrs,
            text if n.tag in ("t", "delText", "instrText") else text.strip(), []]
     for k in n.kids:
+        default_style = k.tag == "pStyle" and k.wattr("val") == doc.default_style
         if (k.tag in NOISE or k.tag in LAYOUT or (n.tag == "rPr" and k.tag in ("lang", "noProof"))
                 or (k.tag in ("bookmarkStart", "bookmarkEnd") and k.wattr("id") in doc.goback)
-                or (n.tag == "pPr" and (k.tag == "rPr" or k.tag == "pStyle" and k.wattr("val") == doc.default_style))):
+                or (n.tag == "pPr" and (k.tag == "rPr" or default_style))):
             continue
         c = canon(k, doc, masked)
         if not (k.tag in ("pPr", "rPr") and not c[1] and not c[3]):  # properties that became empty
@@ -336,7 +346,43 @@ def sidecar_path(docx):
 
 def load_sidecar(docx):
     p = sidecar_path(docx)
-    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {"sections": {}}
+    data = read_json(p) if p.exists() else {"sections": {}}
+    if not (isinstance(data, dict) and isinstance(data.get("sections"), dict)
+            and all(isinstance(v, dict) for v in data["sections"].values())):
+        raise Refuse(f"{p.name} is not an assistant record")
+    return data
+
+
+def read_text(path):
+    """UTF-8 text without a byte order mark; anything else is refused."""
+    try:
+        return Path(path).read_bytes().decode("utf-8-sig")
+    except UnicodeDecodeError:
+        raise Refuse(f"{Path(path).name} is not UTF-8 text") from None
+
+
+def read_json(path):
+    try:
+        return json.loads(read_text(path))
+    except ValueError as e:
+        raise Refuse(f"{Path(path).name} is not valid JSON ({e})") from None
+
+
+def publish(path, write):
+    """Call write(temp path) for a temp file next to path, then rename it into place with mode 0644."""
+    fd, tmp = tempfile.mkstemp(dir=Path(path).parent, suffix=".tmp")
+    os.close(fd)
+    try:
+        write(tmp)
+        os.chmod(tmp, 0o644)
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+
+
+def write_text_file(path, text):
+    publish(path, lambda tmp: Path(tmp).write_text(text, encoding="utf-8"))
 
 
 def file_sha256(path):
@@ -346,17 +392,21 @@ def file_sha256(path):
 # ---------- content markdown ----------
 
 def parse_content(text):
-    """'## section' blocks -> {section_id: {"blocks": [...], "raw": str, "ids": [...]}}."""
-    raw, cur = {}, None
+    """'## section' blocks -> ({section_id: {"blocks": [...], "raw": str, "ids": [...]}}, warnings)."""
+    raw, cur, stray = {}, None, []
     for line in text.splitlines():
         m = re.match(r"^##\s+(\S.*?)\s*$", line)
         if m and not line.startswith("###"):
             cur = slug(m.group(1))
+            if cur in raw:
+                raise Refuse(f"the draft has more than one '## {cur}' section")
             raw[cur] = []
-        elif cur is not None:
-            raw[cur].append(line)
+        else:
+            (stray if cur is None else raw[cur]).append(line)
+    stray = "\n".join(stray).strip()
+    warnings = [f"text before the first '## section' heading was not used: {stray}"] if stray else []
     return {k: {"blocks": blocks(v), "raw": "\n".join(v).strip(),
-                "ids": sorted(set(TAG_ID.findall("\n".join(v))))} for k, v in raw.items()}
+                "ids": sorted(set(TAG_ID.findall("\n".join(v))))} for k, v in raw.items()}, warnings
 
 
 def blocks(lines):
@@ -425,7 +475,8 @@ class Gen:
 
     def p(self, text, style_id):
         w = self.w
-        ppr = f'<{w}:pPr><{w}:pStyle {w}:val="{style_id}"/></{w}:pPr>' if style_id not in (None, self.default) else ""
+        explicit = style_id not in (None, self.default)  # the default style is never written out
+        ppr = f'<{w}:pPr><{w}:pStyle {w}:val="{style_id}"/></{w}:pPr>' if explicit else ""
         return f"<{w}:p>{ppr}{self.runs(text)}</{w}:p>"
 
     def table(self, rows, width=9000):
@@ -526,18 +577,17 @@ def verify(base, new, written, filled):
 
 def write_docx(doc, xml, out, written, filled):
     """Write the zip to a temp file, run the preservation check on it, then rename it into place."""
-    out = Path(out)
-    fd, tmp = tempfile.mkstemp(dir=out.parent, suffix=".docx.tmp")
-    os.close(fd)
-    try:
+    parts = {**doc.parts, "word/document.xml": xml}
+    if doc.template:  # a .dotx base gives a document
+        parts["[Content_Types].xml"] = parts["[Content_Types].xml"].replace(TEMPLATE_MAIN, DOCUMENT_MAIN)
+
+    def write(tmp):
         with zipfile.ZipFile(tmp, "w") as z:
             for info in doc.infos:
-                z.writestr(info, xml if info.filename == "word/document.xml" else doc.parts[info.filename])
+                z.writestr(info, parts[info.filename])
         verify(doc, Doc(tmp), written, filled)
-        os.replace(tmp, out)
-    finally:
-        if os.path.exists(tmp):
-            os.remove(tmp)
+
+    publish(out, write)
 
 
 def check_mode(doc, base, mode, template):
@@ -545,6 +595,10 @@ def check_mode(doc, base, mode, template):
     record = sidecar_path(base).exists()
     if mode not in ("first", "existing", "normal"):
         raise Refuse(f"unknown build mode {mode!r}")
+    if doc.macro:
+        raise Refuse("macro-enabled Word files (.docm, .dotm) are not supported")
+    if doc.template and mode != "first":
+        raise Refuse("a Word template (.dotx) can only be the base of --first")
     if mode == "first":
         if not template:
             raise Refuse("--first needs --template: the configured blank FP template")
@@ -563,12 +617,16 @@ def check_mode(doc, base, mode, template):
 
 def build(base, content, out, mode="normal", template=None, fields=None, protect=()):
     out = Path(out)
-    if out.exists():
-        raise Refuse(f"{out.name} already exists; choose a new version name")
+    record, proposals = sidecar_path(out), out.with_suffix(".proposals.md")
+    for p in (out, record, proposals):
+        if p.exists():
+            raise Refuse(f"{p.name} already exists; choose a new version name")
+    if fields is not None and not isinstance(fields, dict):
+        raise Refuse("--fields must be a JSON object of cover label: value")
     doc = Doc(base)
     check_mode(doc, base, mode, template)
     baseline = load_sidecar(base)["sections"] if mode == "normal" else {}
-    wanted = parse_content(Path(content).read_text(encoding="utf-8"))
+    wanted, warnings = parse_content(read_text(content))
     by_id = {s["id"]: s for s in doc.sections}
     unknown = sorted(set(protect) - set(by_id))
     if unknown:
@@ -611,22 +669,20 @@ def build(base, content, out, mode="normal", template=None, fields=None, protect
         sections[sid] = {"owner": "ai" if sid in written or untouched_ai else "other",
                          "signature": signature(sec),
                          "ids": wanted[sid]["ids"] if sid in written else old.get("ids", [])}
-    sidecar_path(out).write_text(json.dumps(
-        {"base": Path(base).name, "docx_sha256": file_sha256(out), "sections": sections}, indent=1),
-        encoding="utf-8")
-    proposals = None
+    write_text_file(record, json.dumps(
+        {"base": Path(base).name, "docx_sha256": file_sha256(out), "sections": sections}, indent=1))
     if frozen or unmatched:
-        proposals = out.with_suffix(".proposals.md")
         lines = [f"# Proposed text not applied to {out.name}", "",
                  "These sections were left exactly as they are. Copy what you want into Word.", ""]
         for sid in list(frozen) + unmatched:
             reason = frozen.get(sid, "no section with this heading in the document")
             lines += [f"## {sid}", f"_Not applied: {reason}._", "", wanted[sid]["raw"], ""]
-        proposals.write_text("\n".join(lines), encoding="utf-8")
+        write_text_file(proposals, "\n".join(lines))
     return {"out": str(out), "written": written, "frozen": frozen, "unmatched": unmatched,
             "missing_sections": missing_sections, "missing_fields": missing_fields,
-            "protected_fields": protected_fields, "proposals": str(proposals) if proposals else None,
-            "complete": not (missing_sections or unmatched or frozen), "sha256": file_sha256(out)}
+            "protected_fields": protected_fields, "proposals": str(proposals) if frozen or unmatched else None,
+            "warnings": warnings, "complete": not (missing_sections or unmatched or frozen),
+            "sha256": file_sha256(out)}
 
 
 # ---------- inspect and check ----------
@@ -676,9 +732,10 @@ def to_markdown(path):
                 prefix = "- " if "list" in name.lower() else ""
                 lines += [prefix + k.plain().strip(), ""]
     comments = inspect(path)["comments"]
-    if comments:
-        lines += ["## comments (not part of the FP)", ""]
-        lines += [f"- [{c['section']}] {c['author']}: {c['text']}" for c in comments]
+    if comments:  # a read-only note, so feeding this text back to build adds no section
+        lines.append("<!-- comments, read-only (not part of the FP):")
+        lines += [f"- [{c['section']}] {c['author']}: {c['text']}".replace("-->", "- ->") for c in comments]
+        lines.append("-->")
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -772,7 +829,8 @@ def edit_text(path, old, new):
     """Simulate an officer editing text in Word (test helper)."""
     with zipfile.ZipFile(path) as z:
         parts = {i.filename: z.read(i.filename) for i in z.infolist()}
-    assert old.encode() in parts["word/document.xml"], old
+    if old.encode() not in parts["word/document.xml"]:
+        raise ValueError(f"not in word/document.xml: {old}")
     parts["word/document.xml"] = parts["word/document.xml"].replace(old.encode(), new.encode(), 1)
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
         for name, data in parts.items():
@@ -826,17 +884,18 @@ def main(argv=None):
         if args.cmd == "inspect":
             print(to_markdown(args.docx) if args.markdown else json.dumps(inspect(args.docx), indent=1))
         elif args.cmd == "build":
-            fields = json.loads(Path(args.fields).read_text(encoding="utf-8")) if args.fields else None
+            fields = read_json(args.fields) if args.fields else None
             mode = "first" if args.first else "existing" if args.existing else "normal"
             protect = [s.strip() for s in args.protect.split(",") if s.strip()]
-            print(json.dumps(build(args.base, args.content, args.out, mode, args.template, fields, protect), indent=1))
+            result = build(args.base, args.content, args.out, mode, args.template, fields, protect)
+            print(json.dumps(result, indent=1))
         elif args.cmd == "check":
             result = check(args.docx, args.template)
             print(json.dumps(result, indent=1))
             return 1 if result["problems"] else 0
         else:
             print(selftest())
-    except (Refuse, KeyError, zipfile.BadZipFile, expat.ExpatError, OSError) as e:
+    except (Refuse, KeyError, ValueError, zipfile.BadZipFile, expat.ExpatError, ET.ParseError, OSError) as e:
         print(f"REFUSED: {e}", file=sys.stderr)
         return 3
     return 0
