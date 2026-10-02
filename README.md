@@ -1,54 +1,66 @@
 # FP Assistant
 
-Prepare clear, evidence-grounded financing proposals in an institution's Word template. The assistant connects source review, financial analysis, interviews, diligence and editorial judgment while preserving the officer's decisions and edits.
+Preparing a **financing proposal (FP)** means turning financial statements, transaction documents, interviews and correspondence into a clear recommendation for a credit or investment decision. The information is spread across files, changes during due diligence and often contains conflicting explanations. The final paper must explain the business, the numbers and the risks while following an institution's template and writing style.
 
-**Status — 2 October 2026:** design and eight draft skill sources. No installed plugin or functioning register/Word/financial-table application is claimed. This repository is separate from Bankability. Confidential deal documents, real transcripts, private audience notes and institutional templates stay in their approved work environment.
+AI can help with that work, but fluent prose is not enough. Figures need to be traceable to their sources. Management expectations must remain distinct from verified facts. Unanswered questions must survive successive drafts, and an analyst's edits must not disappear when the assistant revises the document.
 
-**Downloadable preview 0.2.0:** a Claude-compatible plugin ZIP and individual skill ZIPs are now packaged locally for Cowork import. See [installation and limits](INSTALL.md). The preview includes [checkpoint review and arbitration instructions](docs/adversarial-review.md); it supplies no automatic agent orchestration. Tenant import and operation remain untested.
+**FP Assistant is an experimental toolkit for that workflow.** It combines reusable AI skills for analysis, drafting and review with local tools for evidence records, financial tables and controlled Word revisions. It starts from an existing proposal or template and helps the investment officer develop the whole paper, with supporting analysis and explicit gaps. The officer retains the recommendation and approval decisions.
 
-## Start here
+## How it works
 
-- [Design v3](docs/design-v3.md): proposed workflow, implementation boundaries and acceptance criteria.
-- [Meeting evidence and Deal Strategy extension](docs/transcripts-and-strategy.md): eighth skill and continuing diligence/writing strategy.
-- [Research assessment](docs/research-assessment.md): recent primary-source precedents and original design review.
-- [Skill review](docs/skill-review.md): authoring decisions and honest validation status.
-- [Seven-skill handover](docs/handover-v3.md): original baseline handover; use the transcript extension alongside it.
+The workflow moves from source review to financial analysis, drafting and challenge. New emails or interview notes feed back into the analysis and affected sections. Approved proposals guide the house style; ASD-STE100 (Simplified Technical English) provides clarity principles, with deliberate departures for financial terminology, qualifications and natural institutional prose.
 
-The eight editable sources are under `skills/`. The handover's seven-skill count describes the reviewed baseline; Deal Updates and Guidance is the additional draft extension. There are no mandatory eight-agent runs.
+Eight skills define the specialist work. Each is a `SKILL.md` instruction file with relevant references and tools, loaded when its task is needed.
 
-| Skill | Purpose |
+| Skill | Responsibility |
 |---|---|
-| [Deal Analyst](skills/deal-analyst/SKILL.md) | Company, transaction and diligence synthesis. |
-| [Annual Report Review](skills/annual-report-review/SKILL.md) | Complete scoped accounts/notes reading and located evidence. |
-| [Financial Performance Analysis](skills/financial-performance-analysis/SKILL.md) | Explain earnings, financial movements and cash conversion. |
-| [Repayment and Structure](skills/repayment-and-structure/SKILL.md) | Borrower liquidity, debt service, covenants and protections. |
-| [FP Lead](skills/fp-lead/SKILL.md) | Select, draft and revise the financing case. |
-| [Investment Grill](skills/investment-grill/SKILL.md) | Challenge material evidence and reasoning. |
-| [Template and Style Reviewer](skills/fp-template-style-reviewer/SKILL.md) | House style, natural section flow, template and layout. |
-| [Deal Updates and Guidance](skills/meeting-evidence-review/SKILL.md) | Refresh relevant emails, transcripts and uncertain guidance; prioritise evidence and strategy updates. |
+| `fp-lead` | Develop the financing case, draft the paper and coordinate revisions |
+| `deal-analyst` | Explain the company and transaction; maintain the diligence analysis |
+| `deal-updates` | Assess emails, interviews and informal guidance; update evidence and open questions |
+| `annual-report-review` | Read financial statements and notes, retaining source locations and coverage gaps |
+| `financial-performance-analysis` | Explain earnings, working capital and cash movements |
+| `repayment-and-structure` | Assess debt service, liquidity, covenants and financing terms |
+| `investment-grill` | Challenge consequential claims, assumptions and conclusions |
+| `fp-template-style-reviewer` | Check the template, house style and final document presentation |
 
-## Normal FP workflow
+FP Lead calls for specialist work where useful. Separate reviewer tasks depend on the host's capabilities; the plugin does not launch an independent agent service.
 
-Start with the whole deal: core evidence, recent correspondence, company and repayment picture, provisional case, diligence gaps and the full-paper structure. Draft and review the complete FP with that context. The usual observation/risk/mitigant/conclusion reasoning can span paragraphs; sufficient description and evidence take priority over a formula.
+## Technical implementation
 
-Before drafting, material revision and a readiness decision, Deal Updates and Guidance refreshes accessible deal emails and meeting material through a stated cutoff. It records partial coverage and unavailable mail access rather than claiming all latest information was checked. It updates or proposes changes in the existing evidence, open-item and strategy records.
+Three Python 3.9+ tools use only the standard library:
 
-## Setup validation
+| Tool | What it does |
+|---|---|
+| `register.py` | Maintains a JSON record of sources, risks, questions, findings and analysis. Generates Excel and Markdown views. Revision checks reject stale updates; retry IDs prevent duplicate changes. Promised or received-but-unassessed answers remain outstanding. |
+| `fp_docx.py` | Reads Word document structure and writes revisions to a new file. Section signatures and a companion `.sections.json` record detect officer edits. Protected sections remain intact and unapplied replacements go into a proposals file. |
+| `fin_table.py` | Reads an identified spreadsheet export, transfers selected figures and performs limited calculations. Records workbook hashes, cell references and formulas; refuses ambiguous labels or periods and requires an explicit basis for trusting cached formula values. |
 
-Verify source access and a save/readback with the real template and tenant model. A representative section is optional early style calibration **after** the broader deal analysis, not a prerequisite to requesting a full FP. Test an officer edit and safe revision, then extend to historical replays and a supervised pilot. Judge material errors/omissions, whole-paper coherence, writing quality and officer repair effort together.
+The AI handles interpretation and writing; these tools handle repeatable file and record operations. The package targets Microsoft Copilot Cowork, which must provide the model, authorised source access, Python execution and file retrieval/saving. No email connector, database or hosted backend is included.
 
-The design names three proposed operational programs; they do not yet exist here. Implement the smallest supported file/record workflow demonstrated by the tenant tests.
+## Try it
 
-## Evaluation status
+Supply a partially completed FP, the separate blank template, original evidence, a checked financial spreadsheet export and approved writing examples. Ask:
 
-- All eight skill folders passed structural and local-reference checks at repository creation.
-- [Eight baseline synthetic cases](evaluations/scenarios.md) and a [reviewer guide](evaluations/reviewer-guide.md) are prepared; their full behavioral runs remain outstanding.
-- [One transcript case](evaluations/transcript-case.md) was executed by a fresh actor and independently graded. It passed within that synthetic scope, with a minor decision-wording issue recorded. See the [evaluation record](evaluations/transcript-review.md).
-- [One mixed email/meeting case](evaluations/deal-updates-review.md) was performed by a fresh actor and checked by the author against explicit criteria. Live email access and completeness remain untested.
-- Actual institutional house-style matching, tenant file operations, access enforcement and Word preservation remain unverified. A synthetic pass is not production assurance.
+> Improve this financing proposal as a whole. Check and improve the existing analysis, explain the financial movements and repayment case, and follow the supplied template and writing examples. Save a new Word version, preserve protected content, and identify missing evidence and changes that could not be applied.
 
-## Maintaining the sources
+**The 0.3.0 implementation is on the [development branch](https://github.com/rrecourt2/fp-assistant/tree/tools-and-cleanup), under review in [PR #1](https://github.com/rrecourt2/fp-assistant/pull/1).** The default branch retains the earlier implementation until that review is complete.
 
-`shared/` is canonical for the common rules. Each skill carries matching copies in `references/` for self-contained packaging. Update those copies and the handover when changing shared instructions. Keep skill activation precise and specialist methods proportionate. Build the local previews with `python3 scripts/package.py`; the ZIPs are written to ignored `dist/`. Packaging does not install a skill.
+[Installation and pilot instructions](https://github.com/rrecourt2/fp-assistant/blob/tools-and-cleanup/INSTALL.md) · [Design](https://github.com/rrecourt2/fp-assistant/blob/tools-and-cleanup/docs/design.md) · [Validation results](https://github.com/rrecourt2/fp-assistant/blob/tools-and-cleanup/evaluations/results.md)
 
-`evaluations/` contains synthetic material only. Keep local experiments, deal data and generated outputs outside tracked source; the conventional `local/`, `deal-data/` and `outputs/` folders are ignored. An ignore rule is not an access-control boundary. No runtime dependencies, connectors or application programs have been added.
+Local tests cover the tools and synthetic Word files saved in Microsoft Word. Actual Cowork operation, institutional-template compatibility and whole-paper writing quality still need a supervised pilot. The writer currently preserves predefined financial tables rather than filling them and cannot insert entirely missing headings. Human factual, substantive and visual review remains necessary.
+
+## Development
+
+On the development branch:
+
+```sh
+uv run pytest -q
+python3 scripts/package.py
+python3 scripts/package.py --check
+```
+
+`shared/` and `tools/` are the maintained originals. Packaging copies their contents into the skills for self-contained upload and builds plugin and individual-skill ZIPs in `dist/`. Tests and reusable synthetic evaluation cases are tracked; local plans, run logs and generated outputs are ignored. Keep confidential deal material in its approved work environment.
+
+## Toward Bankability
+
+This is an experiment in making financing analysis and proposal writing more consistent, traceable and useful. If its methods prove effective across deals and institutions, they could contribute to **Bankability**: a broader shared standard for evidence-based financing workflows. That is a direction for development, not an established standard.
