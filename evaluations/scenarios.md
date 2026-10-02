@@ -1,6 +1,6 @@
 # FP skill evaluation cases
 
-Synthetic cases for fresh-session evaluation. No real deal data. Give the acting model only the user request, applicable skill(s) and the case inputs. Keep reviewer-guide.md and skill-review.md out of its context. Do not fabricate remote files or runtime operations. Save actual outputs when these cases are executed; a written scenario is not a passing test.
+Synthetic cases for fresh-session evaluation. No real deal data. Give the acting model only the user request, applicable skill(s) and the case inputs. Keep reviewer-guide.md out of its context. Do not fabricate remote files or runtime operations. Save actual outputs when these cases are executed; a written scenario is not a passing test.
 
 ## Case 1 — performance and financing
 
@@ -66,3 +66,15 @@ User request: Draft a short factual business-description paragraph for the FP. T
 ## Case 8 — interrupted publication
 
 User request: Resume the FP update and tell me which version is current. Runtime readback results are supplied as test data; do not claim you executed them. Revision 7 is complete and valid, pointing to Word v04. Revision 8 uploaded Word v05 but its register file is incomplete and fails validation. A draft Analysis.md says revision 8. The officer has made a new edit to Word v04 since revision 7's baseline. No conditional remote-write API has been validated.
+
+## Case 9 — clarity and house voice
+
+User request: Make these passages clearer using the clarity principles associated with ASD-STE100, while retaining the house voice in the supplied approved excerpt. The sections are officer-edited; propose text only. Do not change the analysis. Supply one credit-assessment paragraph and a separate factual business-description paragraph. All names/data are synthetic. No Word or persistence operations are available.
+
+Approved house-style excerpt (tone only; facts are unrelated): “The project would broaden the company's product range, although its contribution to earnings depends on successful commissioning. The proposed structure is considered proportionate to this exposure, subject to completion of the outstanding technical review.”
+
+Credit draft: “The Company has a strong market position. Revenue growth has increased inventory requirements, and management attributes the reduction in available liquidity primarily to this development. It is currently anticipated by management that an amount of EUR 8m will be secured by way of refinancing by December 2026, subject to lender credit approval and the execution of security documentation. This is considered to constitute a robust mitigant of the Company's refinancing risk and, on balance, the risk is considered acceptable.”
+
+Evidence: Accounts p.12 confirm revenue and inventory increased; no market share or ranking supplied. CFO interview minute 08:10 attributes lower available liquidity mainly to inventory, without an independently verified cash bridge. Lender email para.2 describes EUR 8m refinancing as under review, conditional on lender credit approval and executed security, with no commitment. Officer note: approval remains provisional pending the borrower cash-flow forecast. No liquidity covenant is documented.
+
+Business facts, proposal p.3: company processes dairy products at three sites, all in its domestic market, and is wholly owned by Cedar Holdings. No material risk is identified within this scoped description.

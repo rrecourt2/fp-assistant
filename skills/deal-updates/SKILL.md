@@ -1,13 +1,15 @@
 ---
-name: meeting-evidence-review
-description: Review recent deal emails, meeting transcripts and informal guidance to keep the FP evidence and priorities current. Use to check the latest correspondence, review a Teams interview, reconcile conflicting updates, interpret tentative feedback or refresh diligence and writing priorities. FP Lead owns the adopted strategy; Deal Analyst owns substantive synthesis.
+name: deal-updates
+description: Review recent deal emails, meeting transcripts, call notes, Word comments and informal guidance for a financing proposal. Use to check the latest correspondence, process a Teams call or specialist interview, record what someone said, reconcile conflicting updates or interpret tentative feedback. Records who said what and proposes updates to evidence, open items and the deal strategy. For reading documents such as annual reports or contracts use deal-analyst or annual-report-review.
 ---
 
 # Deal Updates and Guidance
 
-Keep the deal's evidence, open questions and writing direction current across emails, meetings and informal notes. Distinguish what was said, what is supported, what was suggested and what was decided. Prioritise relevance to the whole financing case rather than merely summarising the newest messages. The existing skill identifier is retained for continuity.
+Keep the deal's evidence, open questions and writing direction current across emails, meetings and informal notes. Distinguish what was said, what is supported, what was suggested and what was decided. Prioritise relevance to the whole financing case rather than merely summarising the newest messages.
 
 Apply [operating-rules.md](references/operating-rules.md) and [workflow-contract.md](references/workflow-contract.md). Use the deal/entity identifiers, current Deal Strategy and open items, prior review scope/cutoff, permitted correspondence and meeting sources. Continue useful work without inventing missing context or tools.
+
+Tools: [register.py](scripts/register.py), [fp_docx.py](scripts/fp_docx.py). Use the workflow contract for invocation and record updates.
 
 ## Refresh the accessible deal information
 

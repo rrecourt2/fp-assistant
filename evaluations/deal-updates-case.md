@@ -1,6 +1,6 @@
 # Synthetic deal-update request
 
-Use only this fixture and the skill at `skills/meeting-evidence-review/SKILL.md` with its references. No real mailbox or deal is represented. Save only the requested local evaluation response; do not contact anyone or claim live operations.
+Use only this fixture and the skill at `skills/deal-updates/SKILL.md` with its references. No real mailbox or deal is represented. Save only the requested local evaluation response; do not contact anyone or claim live operations.
 
 ## Request
 

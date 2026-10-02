@@ -1,13 +1,15 @@
 # Working on FP Assistant
 
-Read README.md and the relevant design/skill sources before changing the workflow. This is a new standalone repository, currently containing design documents and draft skills, not a working financial application.
+Read README.md and the relevant maintained source before changing behaviour. The current design is docs/design.md. Local planning notes and superseded designs are ignored; maintained code, documentation, tests and evaluation cases define the current implementation.
 
-- Keep changes small and tied to the current FP preparation task. Do not create an agent framework, general forecasting platform or second spreading engine.
-- Preserve the officer's original evidence and writing principles. Topic logic and good FP examples guide the prose; do not enforce a repeated paragraph formula.
-- Use skills selectively. FP Lead owns the paper and Deal Strategy; Deal Analyst owns substantive synthesis. Deal Updates and Guidance proposes evidence and follow-through updates.
-- Keep one authoritative register in the proposed operational design. Generated Analysis views and Word handoffs have the distinct roles described in the design.
-- Preserve officer edits, material qualifications, contrary evidence and source locators. Never invent tool operations, installed skills, independent reviews or readiness.
-- Keep shared references canonical in shared/ and copied identically into each skill's references/. The baseline handover currently contains seven skills; the transcript extension is separate and explicitly identified.
-- Do not commit confidential deal documents, real interviews, private audience notes, credentials or internal templates. Preserve actual audience boundaries when designing output routing.
-- Match verification to the change. Distinguish structural validation, synthetic behavior and work-tenant acceptance; do not imply that one proves the others.
-- Keep communications as drafts unless sending is explicitly authorised. Do not deploy, install or publish public artifacts merely because source files exist.
+- Keep the eight skills and three local tools focused on FP preparation. No general forecasting platform, second spreading engine or agent framework.
+- shared/ and tools/ are canonical. Change skills/*/SKILL.md where needed, then run python3 scripts/package.py to regenerate companion copies. Do not edit generated copies directly.
+- Runtime tools use Python 3.9+ standard library only. Existing test-only readers belong in the pyproject dev group.
+- Preserve original Word inputs. Existing-draft mode needs authority to revise a genuine imported draft; an absent record alone does not establish that. Normal revisions preserve officer edits and protected content.
+- Keep one JSON master and one writer. Generated views can be rebuilt. Report partial publication honestly and make retries repair views without duplicating changes.
+- Preserve located evidence, contrary facts, natural section logic and officer decisions. Do not enforce a repeated paragraph formula or infer risk acceptance from a mechanical check.
+- FP Lead owns the paper and adopted strategy; Deal Analyst owns substantive synthesis; Deal Updates proposes correspondence/evidence changes. Keep skill activation selective.
+- Keep confidential deal documents, real interviews, private notes, credentials and institutional templates out of this public repository. Synthetic Word fixtures are allowed; review their contents before committing.
+- Distinguish local tests, synthetic behaviour, real Word save fixtures, tenant acceptance and full-FP quality. Never claim another agent ran or that a source, remote save, layout or whole FP was checked without evidence.
+- Communications remain drafts unless sending is explicitly authorised. Do not install or publish merely because an artifact exists.
+- Test meaningful failure modes and run the affected suites during development. Before delivery run uv run pytest -q and python3 scripts/package.py --check, plus the runtime self-tests from the built package. Add no tests merely for prose wording.

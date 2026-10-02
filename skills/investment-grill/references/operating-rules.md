@@ -10,6 +10,17 @@ Organise each section around the topic's natural logic, with enough descriptive 
 
 Write clearly, succinctly and in familiar institutional language. Use the agreed examples to calibrate detail and tone. Prefer a short, well-supported conclusion over exhaustive qualification or elaborate frameworks. Each mitigant must address the stated risk; distinguish existing, verified protections from proposed conditions and untested assumptions.
 
+## Clear prose in the institution's voice
+
+Draw explicitly on **ASD-STE100 (Simplified Technical English)** when drafting and reviewing: use its discipline of clear wording, consistent terms and unambiguous relationships. Apply the FP-specific departures below. Preserve evidence meaning and mandatory wording first. Approved FP examples guide the voice, terminology, narrative flow and degree of qualification; simplify within that style. This is an adaptation for financing analysis, not certified STE. If examples are unavailable, use restrained institutional prose and state that house-style matching remains uncalibrated.
+
+- Prefer concrete verbs, clear subjects and consistent terminology. Keep familiar financial and legal terms where a simpler substitute would change the meaning or sound unnatural.
+- Give each sentence a clear main point, but keep related causes, contrasts and conditions together when that reads better. No rigid word limit, approved-word dictionary, universal active-voice rule or compulsory risk headings applies. Preserve natural paragraph flow and useful descriptive context.
+- Make causal links explicit only where supported. Preserve attribution, uncertainty and conditionality: management's explanation is not an independently established cause; expected financing is not committed liquidity. A stylistic edit must not introduce an action, condition, mitigant or approval decision.
+- Support evaluative terms such as “strong”, “adequate” or “acceptable” with the available reasoning or evidence. Do not invent figures to replace an adjective. If support is missing, qualify the claim or flag the gap for the author; do not manufacture a favourable conclusion.
+
+Judge the revised passage in its section context: is it easier to understand, does it still mean the same thing, and does it sound at home beside the approved examples? Keep a longer sentence, conventional passive construction or established phrase when it better preserves that balance. Clear, well-supported prose needs no rewrite merely to demonstrate the method.
+
 ## Select the approval case from fuller analysis
 
 Start from the officer's intended recommendation and write the strongest defensible case for it. Surface evidence that materially weakens that case to the officer. Keep supporting detail in the analysis file, but retain in the submission any risk or qualification that could change the decision. Allow Credit to contribute through genuine judgment points and proposed conditions; do not leave manufactured weaknesses or avoidable errors.

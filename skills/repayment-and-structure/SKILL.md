@@ -1,6 +1,6 @@
 ---
 name: repayment-and-structure
-description: Assess repayment capacity and financing structure for a corporate financing proposal. Use for debt service, liquidity runway, maturity or refinancing risk, covenant headroom, sources and uses, guarantees, security and proposed conditions. Use financial-performance-analysis for historical drivers and specialist institutional methods for regulated financial institutions or other materially different sectors.
+description: Assess repayment capacity and financing structure for a corporate financing proposal. Use for debt service, liquidity runway, maturity or refinancing risk, covenant headroom, sources and uses, guarantees, security and proposed conditions. For historical drivers use financial-performance-analysis; regulated financial institutions and other materially different sectors need specialist institutional methods.
 ---
 
 # Repayment and Structure
@@ -8,6 +8,8 @@ description: Assess repayment capacity and financing structure for a corporate f
 Explain how the proposed financing is repaid, which assumptions it relies on and whether its terms address the identified risks. Present a defensible analytical conclusion for the officer; do not turn proposed terms or a management intention into existing protection.
 
 Apply [operating-rules.md](references/operating-rules.md) and [workflow-contract.md](references/workflow-contract.md). Use the proposed terms, borrower/group structure, debt schedule, approved forecasts/scenarios, covenant definitions, liquidity evidence and relevant legal/security input. Identify missing inputs while continuing supported work. Use institutional specialist methodology when corporate debt-service analysis is unsuitable.
+
+Tools: [register.py](scripts/register.py). Use the workflow contract for invocation and record updates.
 
 ## Locate the obligation and cash
 
