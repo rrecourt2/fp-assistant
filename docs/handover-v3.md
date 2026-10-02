@@ -6,7 +6,7 @@ Use this document to configure or review the skills in the approved work environ
 
 ## Start in the work account
 
-> Continue from this FP Assistant v3 skill pack. Inspect the available skills and tools, and reuse matching skills rather than creating duplicates. Configure or update the seven named skills using their instruction sections and required shared references where the environment supports that operation; otherwise report the precise setup step still needed. Do not claim installation from merely reading this document. Keep deal-specific fields in the task brief. Check access to the supplied files and identify missing material inputs in one short batch while continuing supported work. Use only the skills needed for the request. First run template preflight and a scoped evidence/financial-section pilot. If the proposed FP programs are unavailable, provide clearly labelled provisional analysis and draft content; do not invent commands, register changes, safe Word merges or Ready status. Prepare communications for review; do not send them.
+> Continue from this FP Assistant v3 skill pack. Inspect the available skills and tools, and reuse matching skills rather than creating duplicates. Configure or update the seven named skills using their instruction sections and required shared references where the environment supports that operation; otherwise report the precise setup step still needed. Do not claim installation from merely reading this document. Keep deal-specific fields in the task brief. Check access to the supplied files and identify missing material inputs in one short batch while continuing supported work. Use only the skills needed for the request. Run template preflight, refresh relevant accessible correspondence, establish the whole deal picture and prepare the full FP. A sample section is optional style calibration after that analysis. If the proposed FP programs are unavailable, provide clearly labelled provisional analysis and draft content; do not invent commands, register changes, safe Word merges or Ready status. Prepare communications for review; do not send them.
 
 Reading this pack provides instructions, not tools or permissions. For eventual packaging, create one folder per skill with `SKILL.md`, its two shared references and any specialist method reference. Names and descriptions below belong in YAML frontmatter. In the individual skill files use local `references/...` links; the anchors in this combined copy are for reading. Keep common references byte-identical to the maintained shared source. Do not add executable companions until they exist and have passed the relevant tests.
 
@@ -136,6 +136,7 @@ Use specialist methods where needed:
 - **annual-report-review** for complete accounts/notes coverage and reliable disclosed evidence;
 - **financial-performance-analysis** for earnings drivers, cash conversion and financial movements;
 - **repayment-and-structure** for debt service, liquidity, covenants and financing protections.
+- **meeting-evidence-review** (Deal Updates and Guidance) for recent email/meeting evidence, uncertain guidance and changes to priorities.
 
 Reuse their located evidence and completed work. Request a bounded missing analysis, not a duplicate full review. If the skill is unavailable, do supported work within your competence and identify the missing specialist check; do not claim it ran.
 
@@ -313,6 +314,8 @@ Apply [operating-rules.md](#shared-operating-rules) and [workflow-contract.md](#
 For a new FP, confirm decision sought, intended recommendation, financing scope, actual audience, annex questions, deadline and output location. Propose concise wording from supplied information; ask only for missing material input. Keep private audience sensitivities out of shared records. Obtain template preflight in a separate task; if unavailable, identify the handoff and continue supported analysis.
 
 For an existing FP, begin with its current version and officer changes. Do not restart completed work or require the officer to approve routine steps again. Use the valid completed register revision to identify the current handoff when operational tools exist.
+
+Before drafting, a material revision or a readiness decision, use `meeting-evidence-review` (Deal Updates and Guidance) to refresh relevant accessible emails and meeting material through an explicit cutoff. Integrate changes into the whole case, diligence priorities and section plan. If email access is unavailable or coverage incomplete, disclose that limit and continue supported drafting without claiming all recent information was checked. A representative section is optional style calibration after understanding the deal, not a prerequisite to drafting the full FP.
 
 #### Shape and draft the case
 
@@ -512,7 +515,7 @@ End with residual exposure and the judgment required. Do not assume every risk m
 
 The seven source folders passed structural checks for frontmatter, names, local references, companion limits and matching shared copies. The original pack and recent primary-source guidance informed the review. Eight synthetic cases and reviewer criteria are prepared separately. Their arithmetic was checked; fresh-agent behavioral runs were not completed because the delegated reviewers hit the account usage limit. This is not a measured claim that the new skills outperform the original pack.
 
-Before relying on the operational workflow, test in the actual work tenant using the exact model and tools. Start with one familiar financial section, complete note reading, a protected officer edit and the real Word template. Evaluate both errors caught and unnecessary objections. Then replay varied historical deals and conduct a supervised live pilot. Assess financial insight, material omissions, prose quality, officer repair time and actual version/preservation behavior separately.
+Before relying on the operational workflow, test in the actual work tenant using the exact model and tools. For setup testing, use complete note reading, a protected officer edit and the real Word template; a sample section can help calibrate style after the whole deal picture is established. It is not a prerequisite for preparing the full FP. Evaluate both errors caught and unnecessary objections. Then replay varied historical deals and conduct a supervised live pilot. Assess financial insight, material omissions, prose quality, officer repair time and actual version/preservation behavior separately.
 
 In the first use of this pack, useful provisional analysis can proceed while runtime capabilities are being established. Report the result, source references, material gaps and actual check status. Do not call it an operationally validated FP merely because the prose is polished.
 

@@ -15,6 +15,8 @@ For a new FP, confirm decision sought, intended recommendation, financing scope,
 
 For an existing FP, begin with its current version and officer changes. Do not restart completed work or require the officer to approve routine steps again. Use the valid completed register revision to identify the current handoff when operational tools exist.
 
+Before drafting, a material revision or a readiness decision, use `meeting-evidence-review` (Deal Updates and Guidance) to refresh relevant accessible emails and meeting material through an explicit cutoff. Integrate changes into the whole case, diligence priorities and section plan. If email access is unavailable or coverage incomplete, disclose that limit and continue supported drafting without claiming all recent information was checked. A representative section is optional style calibration after understanding the deal, not a prerequisite to drafting the full FP.
+
 ## Shape and draft the case
 
 Ask Deal Analyst for missing company/DD synthesis and use the finance specialist skills for bounded gaps. Verify consequential doubts against originals. Full Tier A coverage is required before the risk-placement checkpoint unless the officer explicitly proceeds with a recorded incomplete-read exception; the exception is not evidence of completion.

@@ -4,7 +4,7 @@ Read README.md and the relevant design/skill sources before changing the workflo
 
 - Keep changes small and tied to the current FP preparation task. Do not create an agent framework, general forecasting platform or second spreading engine.
 - Preserve the officer's original evidence and writing principles. Topic logic and good FP examples guide the prose; do not enforce a repeated paragraph formula.
-- Use skills selectively. FP Lead owns the paper and Deal Strategy; Deal Analyst owns substantive synthesis. Meeting Evidence Review proposes evidence and follow-through updates.
+- Use skills selectively. FP Lead owns the paper and Deal Strategy; Deal Analyst owns substantive synthesis. Deal Updates and Guidance proposes evidence and follow-through updates.
 - Keep one authoritative register in the proposed operational design. Generated Analysis views and Word handoffs have the distinct roles described in the design.
 - Preserve officer edits, material qualifications, contrary evidence and source locators. Never invent tool operations, installed skills, independent reviews or readiness.
 - Keep shared references canonical in shared/ and copied identically into each skill's references/. The baseline handover currently contains seven skills; the transcript extension is separate and explicitly identified.

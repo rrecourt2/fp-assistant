@@ -14,11 +14,11 @@ They are selected when needed. There is no requirement to launch seven agents, o
 
 | Skill source | Main result | Body words at structural check |
 |---|---|---:|
-| [Deal Analyst](../skills/deal-analyst/SKILL.md) | Integrated company/DD analysis, specialist views, annex input and open items | 595 |
+| [Deal Analyst](../skills/deal-analyst/SKILL.md) | Integrated company/DD analysis, specialist views, annex input and open items | 611 |
 | [Annual Report Review](../skills/annual-report-review/SKILL.md) | Complete scoped reading, located disclosures and honest coverage gaps | 586 |
 | [Financial Performance Analysis](../skills/financial-performance-analysis/SKILL.md) | Comparable movements, supported drivers, earnings quality and cash conversion | 584 |
 | [Repayment and Structure](../skills/repayment-and-structure/SKILL.md) | Borrower liquidity/debt service, covenant analysis, protections and conditions | 577 |
-| [FP Lead](../skills/fp-lead/SKILL.md) | Concise approval case, controlled revisions, Credit replies and scoped readiness | 684 |
+| [FP Lead](../skills/fp-lead/SKILL.md) | Concise approval case, controlled revisions, Credit replies and scoped readiness | 763 |
 | [Investment Grill](../skills/investment-grill/SKILL.md) | Original-evidence challenge and focused recheck findings | 603 |
 | [Template and Style Reviewer](../skills/fp-template-style-reviewer/SKILL.md) | Binding template rules, clear prose, preserved meaning and actual layout status | 532 |
 
@@ -79,3 +79,9 @@ This is a design judgment, not a demonstrated house-style match. No actual appro
 ## 2 October packaging and review refinement
 
 FP Lead and Investment Grill now include the [material-checkpoint review protocol](../shared/review-protocol.md), including a fresh arbiter mode for consequential disputes. This amendment has been structurally checked but not behaviorally evaluated in the work tenant. The updated sources are bundled in a compatible-plugin preview; see [installation limits](../INSTALL.md). Earlier behavioral results apply only to the recorded cases and versions.
+
+## 2 October email and guidance expansion — preview 0.2.0
+
+The eighth skill is now titled Deal Updates and Guidance, retaining `meeting-evidence-review` as its identifier. It covers relevant recent emails, attachments, threads and meeting material; explicit review scope/cutoff; ambiguous guidance; source authority and supersession; and prioritised implications for the whole FP. FP Lead invokes the refresh before drafting, material revision and readiness assessment. The [new test record](../evaluations/deal-updates-review.md) distinguishes its fresh-actor result from actual mailbox integration.
+
+The startup instructions now make full-FP drafting the normal path. A representative section is optional setup/style calibration after understanding the deal. No ninth skill, background monitoring or new connector was added.

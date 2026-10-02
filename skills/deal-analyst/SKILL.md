@@ -20,6 +20,7 @@ Use specialist methods where needed:
 - **annual-report-review** for complete accounts/notes coverage and reliable disclosed evidence;
 - **financial-performance-analysis** for earnings drivers, cash conversion and financial movements;
 - **repayment-and-structure** for debt service, liquidity, covenants and financing protections.
+- **meeting-evidence-review** (Deal Updates and Guidance) for recent email/meeting evidence, uncertain guidance and changes to priorities.
 
 Reuse their located evidence and completed work. Request a bounded missing analysis, not a duplicate full review. If the skill is unavailable, do supported work within your competence and identify the missing specialist check; do not claim it ran.
 

@@ -4,7 +4,7 @@
 
 This version incorporates the independent assessment, the officer's original 25 September execution pack and the request to add useful finance specialist skills. Part A describes the officer's workflow. Part B defines the smallest dependable implementation and how to test it.
 
-**Proposed extension:** [Meeting Evidence Review and a living Deal Strategy](transcripts-and-strategy.md) address subsequent feedback about client, internal and legal transcripts. The extension includes a draft eighth skill; the seven-skill baseline below remains identifiable.
+**Eighth-skill extension:** [Deal Updates and Guidance and a living Deal Strategy](transcripts-and-strategy.md) address subsequent feedback about recent deal emails, client/internal/legal transcripts and fuzzy guidance. The extension includes a draft eighth skill; the seven-skill baseline below remains identifiable.
 
 **Review refinement:** [material-checkpoint review and arbitration](adversarial-review.md) clarify that substantive challenge covers the case plan, important sections, the whole draft and consequential revisions. The default round plus recheck applies per checkpoint; a fresh third arbiter handles unresolved material disagreement or requested high-impact adjudication.
 
@@ -116,7 +116,7 @@ The initial methods target corporate borrowers. Banks, insurers, funds, project 
 
 Supply the controlled template, an existing draft if any, approved FP examples, source/output folders, officer, deadline, brief and annex questions. Retain the original five operating rules and approval-case principle in all skills. Approve reusable template/style rules and the spread-to-FP mapping once per relevant version.
 
-First prove file access, saving and the real-template loop in the work tenant. Then complete one financial section and recommendation, including challenge and an officer revision. Expand to three varied historical replays and one supervised live pilot. Judge the finished FP and the officer's repair burden, not just first-draft speed.
+First prove file access, saving and the real-template loop in the work tenant. The normal task establishes the whole deal picture and drafts the full FP. An optional financial-section sample can calibrate style after that analysis; it is not a prerequisite for full drafting. Test challenge and an officer revision. Expand to three varied historical replays and one supervised live pilot. Judge the finished FP and the officer's repair burden, not just first-draft speed.
 
 ## Part B — Builder appendix
 
