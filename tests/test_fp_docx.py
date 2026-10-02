@@ -599,3 +599,190 @@ def test_cover_field_fill_that_loses_its_formatting_is_refused(tpl, tmp_path, mo
         fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), tmp_path / "v1.docx", mode="first", template=tpl,
                       fields={"Borrower": "Cedar Foods"})
     assert not (tmp_path / "v1.docx").exists() and not (tmp_path / "v1.sections.json").exists()
+
+
+# ---------- Task 2b: table formatting ----------
+
+def edit_xml(path, pattern, repl):
+    """Like edit_text, with a regular expression (first match only)."""
+    with zipfile.ZipFile(path) as z:
+        parts = {i.filename: z.read(i.filename) for i in z.infolist()}
+    new, n = re.subn(pattern.encode(), repl.encode(), parts["word/document.xml"], count=1)
+    assert n == 1, pattern
+    parts["word/document.xml"] = new
+    with zipfile.ZipFile(path, "w") as z:
+        for name, data in parts.items():
+            z.writestr(name, data)
+
+
+GEN_ROW = "</w:tblGrid><w:tr><w:tc><w:tcPr>"           # first row of the assistant table only
+GEN_PR = '<w:tblW w:w="0" w:type="auto"/><w:tblDescription'
+TABLE_EDITS = {  # name: (pattern, replacement, freezes)
+    "shading": ("</w:tcPr>", '<w:shd w:val="clear" w:color="auto" w:fill="FFFF00"/></w:tcPr>', True),
+    "table style": ('<w:tblStyle w:val="TableGrid"/>', '<w:tblStyle w:val="LightShading"/>', True),
+    "header row": (GEN_ROW, "</w:tblGrid><w:tr><w:trPr><w:tblHeader/></w:trPr><w:tc><w:tcPr>", True),
+    "column width": ('<w:tcW w:w="[0-9]+" w:type="[a-z]+"/>', '<w:tcW w:w="2400" w:type="dxa"/>', True),
+    "grid": ('<w:gridCol w:w="4500"/><w:gridCol w:w="4500"/>' + GEN_ROW,
+             '<w:gridCol w:w="1031"/><w:gridCol w:w="1343"/>' + GEN_ROW, False),
+    "indent": (GEN_PR, '<w:tblW w:w="0" w:type="auto"/><w:tblInd w:w="10" w:type="dxa"/><w:tblDescription', False),
+    "cell margins": (GEN_PR, '<w:tblW w:w="0" w:type="auto"/><w:tblCellMar><w:left w:w="10" w:type="dxa"/>'
+                     '</w:tblCellMar><w:tblDescription', False),
+    "zero look": (GEN_PR, '<w:tblW w:w="0" w:type="auto"/><w:tblLook w:val="0000" w:firstRow="0" '
+                  'w:noVBand="0"/><w:tblDescription', False),
+    "nil width": (GEN_PR, '<w:tblW w:w="0" w:type="nil"/><w:tblDescription', False),
+    "row exceptions": (GEN_ROW, "</w:tblGrid><w:tr><w:tblPrEx><w:tblCellMar><w:top w:w=\"0\" w:type=\"dxa\"/>"
+                       "</w:tblCellMar></w:tblPrEx><w:tc><w:tcPr>", False),
+}
+
+
+@pytest.mark.parametrize("pattern,repl,freezes", TABLE_EDITS.values(), ids=TABLE_EDITS.keys())
+def test_table_formatting_edits_freeze_but_word_layout_noise_does_not(tpl, tmp_path, pattern, repl, freezes):
+    v1 = tmp_path / "v1.docx"
+    fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), v1, mode="first", template=tpl)
+    edit_xml(v1, pattern, repl)
+    r = fp_docx.build(v1, write(tmp_path / "c2.md", "## financial-analysis\nRevenue rose 25%.\n\n{{keep:1}}\n"),
+                      tmp_path / "v2.docx")
+    assert r["frozen"] == ({"financial-analysis": "edited since the assistant wrote it"} if freezes else {})
+
+
+def test_generated_tables_carry_no_explicit_widths(tpl, tmp_path):
+    out = tmp_path / "v1.docx"
+    fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), out, mode="first", template=tpl)
+    with zipfile.ZipFile(out) as z:
+        xml = z.read("word/document.xml").decode()
+    table = xml[xml.index("<w:tblStyle"):xml.index("</w:tbl>", xml.index("<w:tblStyle"))]
+    assert 'w:type="dxa"' not in table and '<w:tcW w:w="0" w:type="auto"/>' in table
+
+
+# ---------- Task 2b: hidden bookmarks ----------
+
+HLK = "_Hlk180000001"
+
+
+def add_part(path, name, data):
+    with zipfile.ZipFile(path, "a") as z:
+        z.writestr(name, data)
+
+
+def officer_draft_with_hidden_bookmark(tpl, path):
+    shutil.copy(tpl, path)
+    fp_docx.edit_text(path, '<w:r><w:t xml:space="preserve">[Summarise the proposal]</w:t></w:r>',
+                      f'<w:bookmarkStart w:id="5" w:name="{HLK}"/><w:r><w:t>Officer summary.</w:t></w:r>'
+                      '<w:bookmarkEnd w:id="5"/>')
+
+
+def test_paragraph_with_an_unreferenced_hidden_bookmark_is_replaced(tpl, tmp_path):
+    draft, out = tmp_path / "draft.docx", tmp_path / "v1.docx"
+    officer_draft_with_hidden_bookmark(tpl, draft)
+    r = fp_docx.build(draft, write(tmp_path / "c.md", "## summary\nNew summary.\n"), out,
+                      mode="existing", template=tpl)
+    assert r["written"] == ["summary"]
+    md = fp_docx.to_markdown(out)
+    assert "New summary." in md and "Officer summary." not in md      # replaced, not duplicated
+
+
+FIELD = ('<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> HYPERLINK \\l "'
+         + HLK + '" </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>see the summary'
+         '</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>')
+ANCHOR = f'<w:p><w:hyperlink w:anchor="{HLK}"><w:r><w:t>see the summary</w:t></w:r></w:hyperlink></w:p>'
+NOTES = (f'<?xml version="1.0" encoding="UTF-8"?><w:footnotes xmlns:w="{fp_docx.W}"><w:footnote w:id="1"><w:p>'
+         f'<w:fldSimple w:instr=" PAGEREF {HLK} \\h "><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p></w:footnote>'
+         "</w:footnotes>")
+
+
+@pytest.mark.parametrize("where", ["field", "anchor", "footnote"])
+def test_paragraph_with_a_referenced_hidden_bookmark_stays(tpl, tmp_path, where):
+    draft, out = tmp_path / "draft.docx", tmp_path / "v1.docx"
+    officer_draft_with_hidden_bookmark(tpl, draft)
+    end = "[State the recommendation]</w:t></w:r></w:p>"
+    if where == "footnote":
+        add_part(draft, "word/footnotes.xml", NOTES)
+    else:
+        fp_docx.edit_text(draft, end, end + (FIELD if where == "field" else ANCHOR))
+    fp_docx.build(draft, write(tmp_path / "c.md", "## summary\nNew summary.\n"), out, mode="existing", template=tpl)
+    md = fp_docx.to_markdown(out)
+    assert "New summary." in md and "Officer summary." in md          # the bookmark target is kept
+
+
+def test_hidden_bookmark_markers_are_not_edits_but_text_changes_are(tpl, tmp_path):
+    v1 = tmp_path / "v1.docx"
+    fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), v1, mode="first", template=tpl)
+    signature = lambda: fp_docx.signature(fp_docx.Doc(v1).sections[-1])  # noqa: E731
+    before = signature()
+    marked = f'<w:bookmarkStart w:id="8" w:name="{HLK}"/>{APPROVE}<w:bookmarkEnd w:id="8"/>'
+    fp_docx.edit_text(v1, APPROVE, marked)
+    assert signature() == before
+    fp_docx.edit_text(v1, marked, APPROVE)
+    assert signature() == before
+    fp_docx.edit_text(v1, APPROVE, marked.replace("Approve.", "Approve now."))
+    assert signature() != before
+
+
+def test_cover_cell_with_an_unreferenced_hidden_bookmark_can_be_filled(tpl, tmp_path):
+    fp_docx.edit_text(tpl, "<w:r><w:t>[name]</w:t></w:r>",
+                      f'<w:bookmarkStart w:id="6" w:name="{HLK}"/><w:r><w:t>[name]</w:t></w:r><w:bookmarkEnd w:id="6"/>')
+    r = fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), tmp_path / "v1.docx", mode="first", template=tpl,
+                      fields={"Borrower": "Cedar Foods"})
+    assert r["missing_fields"] == [] and r["protected_fields"] == []
+
+
+# ---------- Task 2b: Save As recovery ----------
+
+def test_save_as_copy_is_matched_to_its_record_and_keeps_the_officers_edits(tpl, tmp_path, capsys):
+    v1, v2 = tmp_path / "FP-v01.docx", tmp_path / "FP-v02.docx"
+    fp_docx.build(tpl, write(tmp_path / "c1.md", FIRST), v1, mode="first", template=tpl)
+    fp_docx.build(v1, write(tmp_path / "c2.md", "## summary\nCedar Foods seeks EUR 15m.\n"), v2, template=tpl)
+    (tmp_path / "officer").mkdir()
+    copy = tmp_path / "officer" / "FP final.docx"                   # Save As: no record next to it
+    shutil.copy(v2, copy)
+    fp_docx.edit_text(copy, "Revenue rose 20%.", "Revenue rose 20% (officer).")
+    fp_docx.edit_text(copy, "Approve.", "Approve, subject to covenants.")
+    found = fp_docx.find_record(copy, folder=tmp_path)
+    assert found["source"] == str(tmp_path / "FP-v02.sections.json") and found["ambiguous"] is False
+    assert found["candidates"][0] == {"record": found["source"], "matching": 2, "total": 4, "same_ids": True}
+    assert fp_docx.main(["find-record", str(copy), "--folder", str(tmp_path)]) == 0
+    assert json.loads(capsys.readouterr().out)["source"] == found["source"]
+    c3 = write(tmp_path / "c3.md", "## summary\nS.\n\n## financial-analysis\nF.\n\n{{keep:1}}\n\n## market-risk\nM.\n\n"
+                                   "## recommendation\nR.\n")
+    with pytest.raises(fp_docx.Refuse, match="find-record.*--record.*--existing --template"):
+        fp_docx.build(copy, c3, tmp_path / "FP-v03.docx", template=tpl)
+    with pytest.raises(fp_docx.Refuse, match="--record"):
+        fp_docx.build(copy, c3, tmp_path / "FP-v03.docx", mode="existing", template=tpl, record=found["source"])
+    r = fp_docx.build(copy, c3, tmp_path / "FP-v03.docx", template=tpl, record=found["source"])
+    assert r["written"] == ["summary", "market-risk"]
+    assert r["frozen"] == {"financial-analysis": "edited since the assistant wrote it",
+                           "recommendation": "edited since the assistant wrote it"}
+    md = fp_docx.to_markdown(tmp_path / "FP-v03.docx")
+    assert "20% (officer)" in md and "subject to covenants" in md
+
+
+def test_find_record_is_ambiguous_when_two_records_fit_equally(tpl, tmp_path):
+    v1 = tmp_path / "v1.docx"
+    fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), v1, mode="first", template=tpl)
+    shutil.copy(tmp_path / "v1.sections.json", tmp_path / "v1 backup.sections.json")
+    copy = tmp_path / "renamed.docx"
+    shutil.copy(v1, copy)
+    found = fp_docx.find_record(copy)
+    assert found["ambiguous"] is True and found["source"] is None and len(found["candidates"]) == 2
+
+
+def test_first_draft_without_records_has_no_candidates_and_uses_existing(tpl, tmp_path):
+    deal = tmp_path / "deal"
+    deal.mkdir()
+    draft = deal / "Officer draft.docx"
+    shutil.copy(tpl, draft)
+    fp_docx.edit_text(draft, "[State the recommendation]", "Approve (officer).")
+    assert fp_docx.find_record(draft) == {"docx": str(draft), "folder": str(deal), "candidates": [],
+                                          "source": None, "ambiguous": False}
+    r = fp_docx.build(draft, write(deal / "c.md", "## summary\nS.\n"), deal / "FP-v01.docx", mode="existing",
+                      template=tpl)
+    assert r["written"] == ["summary"] and "Approve (officer)." in fp_docx.to_markdown(deal / "FP-v01.docx")
+
+
+def test_fields_in_a_normal_round_are_refused_when_the_first_heading_lost_its_style(tpl, tmp_path):
+    v1, v2 = tmp_path / "v1.docx", tmp_path / "v2.docx"
+    fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), v1, mode="first", template=tpl)
+    unstyle_headings(v1, "1. Summary")
+    with pytest.raises(fp_docx.Refuse, match="record starts with 'summary'"):
+        fp_docx.build(v1, write(tmp_path / "c2.md", "## market-risk\nM.\n"), v2, fields={"Amount": "EUR 15m"})
+    assert not v2.exists()
