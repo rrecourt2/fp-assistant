@@ -32,6 +32,8 @@ from xml.parsers import expat
 from xml.sax.saxutils import escape
 
 W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+W14 = "http://schemas.microsoft.com/office/word/2010/wordml"
+XML_SPACE = "http://www.w3.org/XML/1998/namespace space"
 AI_TAG = "fp-assistant"
 ILLEGAL = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f￾￿]")
 TAG = re.compile(r"\s*\[[SRMOGT]-\d+[^\]]*\]")
@@ -41,6 +43,8 @@ TRACKED = {"ins", "del", "moveFrom", "moveTo", "pPrChange", "rPrChange", "tblPrC
 COMMENT = {"commentRangeStart", "commentRangeEnd", "commentReference"}
 FIXED = {"drawing", "pict", "object", "fldChar", "fldSimple", "instrText", "sectPr", "sdt",
          "AlternateContent", "oMath"}
+NOISE = {"proofErr", "lastRenderedPageBreak"}
+LAYOUT = {"tblPr", "tblGrid", "trPr", "tcPr", "tblPrEx"}  # table layout Word rewrites when it saves
 
 
 class Refuse(Exception):
@@ -137,13 +141,16 @@ def slug(text):
 
 
 def style_info(styles_xml):
-    """styleId -> (name, heading level or None); levels follow basedOn chains."""
+    """styleId -> (name, heading level or None), levels following basedOn chains; and the id of the
+    default paragraph style."""
     if not styles_xml:
-        return {}
+        return {}, "Normal"
     w = "{%s}" % W
-    raw = {}
+    raw, default = {}, "Normal"
     for s in ET.fromstring(styles_xml).iter(w + "style"):
         sid = s.get(w + "styleId")
+        if s.get(w + "type") == "paragraph" and s.get(w + "default") in ("1", "true", "on"):
+            default = sid
         name = s.find(w + "name")
         lvl = s.find(f"{w}pPr/{w}outlineLvl")
         base = s.find(w + "basedOn")
@@ -159,7 +166,7 @@ def style_info(styles_xml):
             return lvl + 1 if lvl < 9 else None
         return level(base, seen + (sid,)) if base else None
 
-    return {sid: (v[0], level(sid)) for sid, v in raw.items()}
+    return {sid: (v[0], level(sid)) for sid, v in raw.items()}, default
 
 
 class Doc:
@@ -177,9 +184,11 @@ class Doc:
         if not m:
             raise Refuse("the Word main namespace has no prefix; refusing to guess")
         self.w = m.group(1).decode()
-        self.styles = style_info(self.parts.get("word/styles.xml"))
+        self.styles, self.default_style = style_info(self.parts.get("word/styles.xml"))
         self.style_id = {name: sid for sid, (name, _) in self.styles.items()}
         self.body = self.root.find("body")
+        self.goback = {n.wattr("id") for n in self.root.iter()  # Word's "last edit" bookmark is save noise
+                       if n.tag == "bookmarkStart" and n.wattr("name") == "_GoBack"}
         self.sections = self._sections()
 
     def level(self, node):
@@ -204,7 +213,7 @@ class Doc:
             if seen[sid] > 1:
                 sid = f"{sid}-{seen[sid]}"
             out.append({"id": sid, "heading": kids[i].plain().strip(), "level": self.level(kids[i]),
-                        "head": kids[i], "body": body})
+                        "head": kids[i], "body": body, "doc": self})
         return out
 
     def comments(self):
@@ -217,35 +226,44 @@ class Doc:
                 for c in scan(xml).kids if c.tag == "comment"}
 
 
-def para_sig(p):
-    style = p.find("pPr", "pStyle")
-    segs = []
-    for r in (n for n in p.iter() if n.tag == "r"):
-        rpr = r.find("rPr")
-        fmt = "".join(k for k in ("b", "i", "u") if rpr is not None and rpr.find(k) is not None
-                      and (rpr.find(k).wattr("val") or "true") not in ("0", "false", "none"))
-        text = "".join("".join(n.text) for n in r.kids if n.tag in ("t", "delText"))
-        if r.deleted():
-            fmt += "-"
-        if segs and segs[-1][1] == fmt:
-            segs[-1][0] += text
-        elif text:
-            segs.append([text, fmt])
-    marks = sorted({n.tag for n in p.iter()} & (FIXED | TRACKED | COMMENT))
-    return f"P|{style.wattr('val') if style is not None else ''}|{segs}|{marks}"
+def canon(n, doc):
+    """n as nested lists [tag, attributes, text, children] without the noise of a Word save: w14 and
+    rsid attributes, xml:space (the exact text is kept), proofing marks, _GoBack, run languages,
+    paragraph-mark properties, the default paragraph style and table layout. Adjacent runs with equal
+    properties are merged."""
+    attrs = sorted([k, v] for k, v in n.attrs.items() if k != XML_SPACE and not k.startswith(W14 + " ")
+                   and not k.rpartition(" ")[2].startswith("rsid"))
+    if n.tag == "tbl":
+        attrs.append(["assistant table", str(not is_fixed(n))])
+    text = "".join(n.text)
+    out = [n.tag if n.uri == W else f"{n.uri} {n.tag}", attrs,
+           text if n.tag in ("t", "delText", "instrText") else text.strip(), []]
+    for k in n.kids:
+        if (k.tag in NOISE or k.tag in LAYOUT or (n.tag == "rPr" and k.tag in ("lang", "noProof"))
+                or (k.tag in ("bookmarkStart", "bookmarkEnd") and k.wattr("id") in doc.goback)
+                or (n.tag == "pPr" and (k.tag == "rPr" or k.tag == "pStyle" and k.wattr("val") == doc.default_style))):
+            continue
+        c = canon(k, doc)
+        if not (k.tag in ("pPr", "rPr") and not c[1] and not c[3]):  # properties that became empty
+            merge(out[3], c)
+    return out
 
 
-def node_sig(k):
-    if k.tag == "p":
-        return para_sig(k)
-    if k.tag == "tbl":
-        rows = [[c.plain() for c in tr.kids if c.tag == "tc"] for tr in k.kids if tr.tag == "tr"]
-        return f"T|{is_fixed(k)}|{rows}"
-    return f"X|{k.tag}|{k.plain()}"
+def merge(kids, c):
+    """Append canonical node c, joining adjacent text, and adjacent runs with equal properties."""
+    last, props = kids[-1] if kids else None, lambda r: [x for x in r[3] if x[0] == "rPr"]
+    if last and last[0] == c[0] == "t":
+        last[2] += c[2]
+    elif last and last[0] == c[0] == "r" and props(last) == props(c):
+        for x in c[3]:
+            if x[0] != "rPr":
+                merge(last[3], x)
+    else:
+        kids.append(c)
 
 
 def signature(sec):
-    data = "\n".join([node_sig(sec["head"])] + [node_sig(k) for k in sec["body"]])
+    data = json.dumps([canon(k, sec["doc"]) for k in [sec["head"]] + sec["body"]])
     return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
 
@@ -356,7 +374,7 @@ class Gen:
     """WordprocessingML strings using the document's own prefix for the main namespace."""
 
     def __init__(self, doc):
-        self.w, self.ids = doc.w, doc.style_id
+        self.w, self.ids, self.default = doc.w, doc.style_id, doc.default_style
 
     def runs(self, text):
         w, out = self.w, []
@@ -371,7 +389,7 @@ class Gen:
 
     def p(self, text, style_id):
         w = self.w
-        ppr = f'<{w}:pPr><{w}:pStyle {w}:val="{style_id}"/></{w}:pPr>' if style_id else ""
+        ppr = f'<{w}:pPr><{w}:pStyle {w}:val="{style_id}"/></{w}:pPr>' if style_id not in (None, self.default) else ""
         return f"<{w}:p>{ppr}{self.runs(text)}</{w}:p>"
 
     def table(self, rows, width=9000):
@@ -395,7 +413,7 @@ def render(doc, sec, items):
     fixed = [k for k in sec["body"] if is_fixed(k)]
     plain = [k for k in sec["body"] if not is_fixed(k) and k.tag == "p"]
     first = plain[0].find("pPr", "pStyle") if plain else None
-    body_style = first.wattr("val") if first is not None else doc.style_id.get("Normal")
+    body_style = first.wattr("val") if first is not None else doc.default_style
     bullet_style = doc.style_id.get("List Bullet")
     out, used = [], set()
     for kind, value in items:

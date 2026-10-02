@@ -1,5 +1,7 @@
 import json
+import shutil
 import zipfile
+from pathlib import Path
 
 import docx  # dev-only independent reader; the tool itself uses the standard library
 import pytest
@@ -213,3 +215,60 @@ def test_existing_draft_rewrites_unprotected_sections_then_normal_rounds_follow_
     assert r2["written"] == ["financial-analysis"]
     assert r2["frozen"] == {"recommendation": "not written by the assistant in the base version"}
     assert "Decline." in (tmp_path / "FP-v02.proposals.md").read_text()
+
+
+# ---------- edit detection through a real Word save ----------
+
+WORD = Path(__file__).parent / "fixtures" / "word-saved"   # synthetic FP built by the tool, then saved by Word
+
+
+def test_real_word_save_changes_only_the_edited_section():
+    before = {s["id"]: fp_docx.signature(s) for s in fp_docx.Doc(WORD / "assistant-v1.docx").sections}
+    after = {s["id"]: fp_docx.signature(s) for s in fp_docx.Doc(WORD / "word-saved-v1.docx").sections}
+    assert list(before) == list(after) == ["summary", "financial-analysis", "market-risk", "recommendation"]
+    assert [sid for sid in before if before[sid] != after[sid]] == ["recommendation"]
+
+
+def test_round_after_a_real_word_save_writes_untouched_sections_and_keeps_the_officers_text(tmp_path):
+    base = tmp_path / "FP-v01.docx"
+    shutil.copy(WORD / "word-saved-v1.docx", base)
+    record = {s["id"]: {"owner": "ai", "signature": fp_docx.signature(s), "ids": []}
+              for s in fp_docx.Doc(WORD / "assistant-v1.docx").sections}
+    write(tmp_path / "FP-v01.sections.json", json.dumps({"base": "template.docx", "sections": record}))
+    r = fp_docx.build(base, write(tmp_path / "c.md", "## summary\nNew summary.\n\n## recommendation\nDecline.\n"),
+                      tmp_path / "FP-v02.docx")
+    assert r["written"] == ["summary"]
+    assert r["frozen"] == {"recommendation": "edited since the assistant wrote it"}
+    md = fp_docx.to_markdown(tmp_path / "FP-v02.docx")
+    assert "New summary." in md and "wow" in md and "Decline." not in md
+
+
+APPROVE = '<w:r><w:t xml:space="preserve">Approve.</w:t></w:r>'
+FORMAT_EDITS = {
+    "highlight": APPROVE.replace("<w:r>", '<w:r><w:rPr><w:highlight w:val="yellow"/></w:rPr>'),
+    "colour": APPROVE.replace("<w:r>", '<w:r><w:rPr><w:color w:val="FF0000"/></w:rPr>'),
+    "strike": APPROVE.replace("<w:r>", "<w:r><w:rPr><w:strike/></w:rPr>"),
+    "centre": '<w:pPr><w:jc w:val="center"/></w:pPr>' + APPROVE,
+    "hyperlink": f'<w:hyperlink w:anchor="annex">{APPROVE}</w:hyperlink>',
+    "footnote": APPROVE + '<w:r><w:footnoteReference w:id="1"/></w:r>',
+    "break": APPROVE.replace("Appr", 'Appr</w:t><w:br/><w:t xml:space="preserve">'),
+    "tab": APPROVE.replace("Appr", 'Appr</w:t><w:tab/><w:t xml:space="preserve">'),
+}
+
+
+@pytest.mark.parametrize("edited", FORMAT_EDITS.values(), ids=FORMAT_EDITS.keys())
+def test_formatting_edit_freezes_the_section(tpl, tmp_path, edited):
+    v1 = tmp_path / "v1.docx"
+    fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), v1, mode="first", template=tpl)
+    fp_docx.edit_text(v1, APPROVE, edited)
+    r = fp_docx.build(v1, write(tmp_path / "c2.md", "## recommendation\nDecline.\n"), tmp_path / "v2.docx")
+    assert r["frozen"] == {"recommendation": "edited since the assistant wrote it"}
+
+
+def test_generated_paragraphs_have_no_explicit_default_style(tpl, tmp_path):
+    out = tmp_path / "v1.docx"
+    fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), out, mode="first", template=tpl)
+    with zipfile.ZipFile(out) as z:
+        xml = z.read("word/document.xml").decode()
+    assert "<w:p><w:r><w:t xml:space=\"preserve\">Approve.</w:t></w:r></w:p>" in xml
+    assert 'w:val="Normal"' not in xml
