@@ -141,12 +141,12 @@ def slug(text):
 
 
 def style_info(styles_xml):
-    """styleId -> (name, heading level or None), levels following basedOn chains; and the id of the
-    default paragraph style."""
+    """styleId -> (name, heading level or None), levels following basedOn chains; the id of the
+    default paragraph style; and the list styles (named "List ..." or carrying numbering)."""
     if not styles_xml:
-        return {}, "Normal"
+        return {}, "Normal", set()
     w = "{%s}" % W
-    raw, default = {}, "Normal"
+    raw, default, lists = {}, "Normal", set()
     for s in ET.fromstring(styles_xml).iter(w + "style"):
         sid = s.get(w + "styleId")
         if s.get(w + "type") == "paragraph" and s.get(w + "default") in ("1", "true", "on"):
@@ -157,6 +157,8 @@ def style_info(styles_xml):
         raw[sid] = (name.get(w + "val") if name is not None else sid,
                     int(lvl.get(w + "val")) if lvl is not None else None,
                     base.get(w + "val") if base is not None else None)
+        if "list" in (raw[sid][0] or "").lower() or s.find(f"{w}pPr/{w}numPr") is not None:
+            lists.add(sid)
 
     def level(sid, seen=()):
         if sid not in raw or sid in seen:
@@ -166,7 +168,7 @@ def style_info(styles_xml):
             return lvl + 1 if lvl < 9 else None
         return level(base, seen + (sid,)) if base else None
 
-    return {sid: (v[0], level(sid)) for sid, v in raw.items()}, default
+    return {sid: (v[0], level(sid)) for sid, v in raw.items()}, default, lists
 
 
 class Doc:
@@ -184,7 +186,7 @@ class Doc:
         if not m:
             raise Refuse("the Word main namespace has no prefix; refusing to guess")
         self.w = m.group(1).decode()
-        self.styles, self.default_style = style_info(self.parts.get("word/styles.xml"))
+        self.styles, self.default_style, self.list_styles = style_info(self.parts.get("word/styles.xml"))
         self.style_id = {name: sid for sid, (name, _) in self.styles.items()}
         self.body = self.root.find("body")
         if self.body is None:
@@ -442,27 +444,33 @@ class Gen:
 
 
 def render(doc, sec, items):
-    """New XML for a section body; fixed content is placed at {{keep:N}} or appended."""
+    """New XML for a section body; fixed content is placed at {{keep:N}} or appended. Prose takes the
+    style of the section's first plain paragraph that is not a list."""
     gen = Gen(doc)
     fixed = [k for k in sec["body"] if is_fixed(k)]
-    plain = [k for k in sec["body"] if not is_fixed(k) and k.tag == "p"]
-    first = plain[0].find("pPr", "pStyle") if plain else None
-    body_style = first.wattr("val") if first is not None else doc.default_style
+    styles = [k.find("pPr", "pStyle") for k in sec["body"] if not is_fixed(k) and k.tag == "p"]
+    styles = [s.wattr("val") if s is not None else doc.default_style for s in styles]
+    body_style = next((s for s in styles if s not in doc.list_styles), doc.default_style)
     bullet_style = doc.style_id.get("List Bullet")
-    out, used = [], set()
+    keep = lambda k: ("kept" if k.tag == "tbl" else None, doc.xml[k.start:k.end].decode("utf-8"))  # noqa: E731
+    out, used = [], set()  # (table kind or None, xml)
     for kind, value in items:
         if kind == "p":
-            out.append(gen.p(value, body_style))
+            out.append((None, gen.p(value, body_style)))
         elif kind == "bullet":
-            out.append(gen.p(value, bullet_style) if bullet_style else gen.p("• " + value, body_style))
+            out.append((None, gen.p(value, bullet_style) if bullet_style else gen.p("• " + value, body_style)))
         elif kind == "table" and value:
-            out.append(gen.table(value))
+            out.append(("generated", gen.table(value)))
         elif kind == "keep" and 1 <= value <= len(fixed) and value not in used:
-            k = fixed[value - 1]
-            out.append(doc.xml[k.start:k.end].decode("utf-8"))
+            out.append(keep(fixed[value - 1]))
             used.add(value)
-    out += [doc.xml[k.start:k.end].decode("utf-8") for n, k in enumerate(fixed, 1) if n not in used]
-    return "".join(out)
+    out += [keep(k) for n, k in enumerate(fixed, 1) if n not in used]
+    xml, before = "", None
+    for table, x in out:
+        if table and before and "generated" in (table, before):
+            xml += f"<{doc.w}:p/>"  # Word merges tables that touch
+        xml, before = xml + x, table
+    return xml
 
 
 def splice(xml, edits):

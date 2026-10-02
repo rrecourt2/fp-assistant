@@ -1,4 +1,5 @@
 import json
+import re
 import shutil
 import zipfile
 from pathlib import Path
@@ -321,3 +322,46 @@ def test_build_that_changes_a_section_it_did_not_write_is_refused(tmp_path, monk
     with pytest.raises(fp_docx.Refuse, match="market-risk"):
         fp_docx.build(tpl, write(tmp_path / "c.md", FIRST), tmp_path / "FP-v01.docx", mode="first", template=tpl)
     assert sorted(p.name for p in tmp_path.iterdir()) == ["c.md", "template.docx"]
+
+
+# ---------- styles for new text ----------
+
+def edit_part(path, name, old, new):
+    with zipfile.ZipFile(path) as z:
+        parts = {i.filename: z.read(i.filename) for i in z.infolist()}
+    assert old.encode() in parts[name], old
+    parts[name] = parts[name].replace(old.encode(), new.encode(), 1)
+    with zipfile.ZipFile(path, "w") as z:
+        for n, data in parts.items():
+            z.writestr(n, data)
+
+
+def paragraph_xml(path, text):
+    with zipfile.ZipFile(path) as z:
+        xml = z.read("word/document.xml").decode()
+    return next(p for p in re.findall(r"<w:p>.*?</w:p>|<w:p .*?</w:p>", xml) if text in p)
+
+
+def test_prose_never_takes_a_list_style_from_the_section(tpl, tmp_path):
+    edit_part(tpl, "word/styles.xml", "</w:styles>", '<w:style w:type="paragraph" w:styleId="Points">'
+              '<w:name w:val="Points"/><w:pPr><w:numPr><w:numId w:val="3"/></w:numPr></w:pPr></w:style></w:styles>')
+    fp_docx.edit_text(tpl, '<w:pStyle w:val="Normal"/></w:pPr><w:r><w:t xml:space="preserve">[Describe',
+                      '<w:pStyle w:val="ListBullet"/></w:pPr><w:r><w:t xml:space="preserve">[Describe')
+    fp_docx.edit_text(tpl, '<w:pStyle w:val="Normal"/></w:pPr><w:r><w:t xml:space="preserve">[Summarise',
+                      '<w:pStyle w:val="Points"/></w:pPr><w:r><w:t xml:space="preserve">[Summarise')
+    out = tmp_path / "v1.docx"
+    fp_docx.build(tpl, write(tmp_path / "c.md", "## summary\nCedar Foods seeks EUR 12m.\n\n"
+                             "## market-risk\nPrices rose.\n\n- Milk prices rose.\n"), out, mode="first", template=tpl)
+    assert "pStyle" not in paragraph_xml(out, "Cedar Foods seeks")      # default style, not Points
+    assert "pStyle" not in paragraph_xml(out, "Prices rose.")           # default style, not List Bullet
+    assert 'w:val="ListBullet"' in paragraph_xml(out, "Milk prices rose.")
+
+
+def test_tables_next_to_a_generated_table_are_kept_apart(tpl, tmp_path):
+    out = tmp_path / "v1.docx"
+    fp_docx.build(tpl, write(tmp_path / "c.md", "## financial-analysis\n| A | B |\n|---|---|\n| 1 | 2 |\n\n"
+                             "{{keep:1}}\n\n| C | D |\n|---|---|\n| 3 | 4 |\n"), out, mode="first", template=tpl)
+    with zipfile.ZipFile(out) as z:
+        xml = z.read("word/document.xml").decode()
+    assert "</w:tbl><w:tbl>" not in xml and xml.count("</w:tbl><w:p/><w:tbl>") == 2
+    assert len(docx.Document(out).tables) == 4
